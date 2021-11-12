@@ -155,6 +155,6 @@ class ODataProcessor {
                 });
             }
         });
-        return new EntityType(name, propertyMap);
+        return new EntityType(name, classInfo.name().toString(), propertyMap);
     }
 }

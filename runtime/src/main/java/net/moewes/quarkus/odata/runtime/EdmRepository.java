@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Default;
+import javax.enterprise.inject.spi.CDI;
 
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.repository.EntityType;
@@ -16,6 +18,7 @@ import org.apache.olingo.commons.api.edm.provider.CsdlEntitySet;
 import org.apache.olingo.commons.api.edm.provider.CsdlEntityType;
 import org.apache.olingo.commons.api.edm.provider.CsdlProperty;
 import org.apache.olingo.commons.api.edm.provider.CsdlPropertyRef;
+import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 
 @ApplicationScoped
 public class EdmRepository {
@@ -91,5 +94,16 @@ public class EdmRepository {
 
     public Optional<EntityType> findEntityTypeDefinition(String entityTypeName) {
         return Optional.ofNullable(entities.get(entityTypeName));
+    }
+
+    public Object getServiceBean(EntitySet entitySet) {
+
+        try {
+            Class<?> beanClass = Class.forName(entitySet.getBeanClassName(), true, Thread.currentThread().getContextClassLoader());
+            Object serviceBean = CDI.current().select(beanClass, Default.Literal.INSTANCE).get();
+            return serviceBean;
+        } catch (ClassNotFoundException e) {
+            throw new ODataRuntimeException("Service class " + entitySet.getBeanClassName() + " not found");
+        }
     }
 }

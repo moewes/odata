@@ -12,5 +12,6 @@ import lombok.NoArgsConstructor;
 public class EntityType {
 
     private String name;
+    private String className;
     private Map<String, EntityProperty> propertyMap;
 }
