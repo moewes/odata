@@ -3,7 +3,9 @@ package net.moewes.quarkus.odata.runtime;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.enterprise.inject.Default;
 import javax.enterprise.inject.spi.CDI;
@@ -17,6 +19,7 @@ import org.apache.olingo.commons.api.data.Property;
 import org.apache.olingo.commons.api.data.ValueType;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.edm.EdmEntityType;
+import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpHeader;
@@ -27,6 +30,8 @@ import org.apache.olingo.server.api.ODataLibraryException;
 import org.apache.olingo.server.api.ODataRequest;
 import org.apache.olingo.server.api.ODataResponse;
 import org.apache.olingo.server.api.ServiceMetadata;
+import org.apache.olingo.server.api.deserializer.DeserializerResult;
+import org.apache.olingo.server.api.deserializer.ODataDeserializer;
 import org.apache.olingo.server.api.serializer.EntitySerializerOptions;
 import org.apache.olingo.server.api.serializer.ODataSerializer;
 import org.apache.olingo.server.api.serializer.SerializerResult;
@@ -81,7 +86,22 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
                 Class<?> beanClass = Class.forName(item.getBeanClassName(), true, Thread.currentThread().getContextClassLoader());
                 Object serviceBean = CDI.current().select(beanClass, Default.Literal.INSTANCE).get();
                 if (serviceBean instanceof EntityProvider<?, ?>) {
-                    ((EntityProvider<?, ?>) serviceBean).find(keyPredicates.get(0).getText()).ifPresent(item2 -> {
+
+                    Map<String, String> keys = new HashMap<>();
+
+                    for (UriParameter keyPredicate : keyPredicates) {
+                        String value = keyPredicate.getText();
+                        EntityType entityType = repository.findEntityTypeDefinition(item.getEntityType()).orElseThrow(RuntimeException::new);
+
+                        EdmPrimitiveTypeKind edmType = entityType.getPropertyMap().get(keyPredicate.getName()).getEdmType();
+                        if (edmType == EdmPrimitiveTypeKind.String) { // TODO Refactor
+                            value = value.substring(1, value.length() - 1);
+                        }
+                        keys.put(keyPredicate.getName(), value);
+                    }
+
+
+                    ((EntityProvider<?, ?>) serviceBean).find(keys).ifPresent(item2 -> {
 
                         EntityType entityType = repository.findEntityTypeDefinition(item.getEntityType())
                                 .orElseThrow(() -> new ODataRuntimeException("EntityType " + item.getEntityType() + " not found"));
@@ -110,8 +130,34 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
     }
 
     @Override
-    public void createEntity(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo, ContentType contentType, ContentType contentType1) throws ODataApplicationException, ODataLibraryException {
+    public void createEntity(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo, ContentType requestFormat, ContentType responseFromat) throws ODataApplicationException, ODataLibraryException {
 
+        EdmEntitySet edmEntitySet = Util.getEdmEntitySet(uriInfo);
+        repository.findEntitySetDefinition(edmEntitySet.getName()).ifPresent(item -> {
+            try {
+                Class<?> beanClass = Class.forName(item.getBeanClassName(), true, Thread.currentThread().getContextClassLoader());
+                Object serviceBean = CDI.current().select(beanClass, Default.Literal.INSTANCE).get();
+                if (serviceBean instanceof EntityProvider<?, ?>) {
+
+                    InputStream inputStream = oDataRequest.getBody();
+                    ODataDeserializer deserializer = this.odata.createDeserializer(requestFormat);
+                    DeserializerResult result = deserializer.entity(inputStream, edmEntitySet.getEntityType());
+                    Entity entity = result.getEntity();
+                    // TODO give to Service
+                    //
+                    ContextURL contextURL = ContextURL.with().entitySet(edmEntitySet).build();
+                    EntitySerializerOptions options = EntitySerializerOptions.with().contextURL(contextURL).build();
+                    ODataSerializer serializer = odata.createSerializer(responseFromat);
+                    SerializerResult serializerResult = serializer.entity(serviceMetadata, edmEntitySet.getEntityType(), entity, options);
+
+                    oDataResponse.setContent(serializerResult.getContent());
+                    oDataResponse.setStatusCode(HttpStatusCode.CREATED.getStatusCode());
+                    oDataResponse.setHeader(HttpHeader.CONTENT_TYPE, responseFromat.toContentTypeString());
+                }
+            } catch (Exception e) {
+
+            }
+        });
     }
 
     @Override

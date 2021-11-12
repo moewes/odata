@@ -73,7 +73,7 @@ class ODataProcessor {
 
     @BuildStep
     BeanDefiningAnnotationBuildItem registerServiceAnnotation() {
-        return new BeanDefiningAnnotationBuildItem(SERVICE, APPLICATION_SCOPED, true);
+        return new BeanDefiningAnnotationBuildItem(SERVICE, APPLICATION_SCOPED, false);
     }
 
     @BuildStep

@@ -10,20 +10,15 @@ import org.apache.olingo.commons.api.edm.provider.CsdlEntityContainerInfo;
 import org.apache.olingo.commons.api.edm.provider.CsdlEntitySet;
 import org.apache.olingo.commons.api.edm.provider.CsdlEntityType;
 import org.apache.olingo.commons.api.edm.provider.CsdlSchema;
-import org.apache.olingo.commons.api.ex.ODataException;
 
 public class EdmProvider extends CsdlAbstractEdmProvider {
 
-    public static final String NAMESPACE = "OData.Demo";
+    public static final String NAMESPACE = "Quarkus.OData";
 
     public static final String CONTAINER_NAME = "Container";
     public static final FullQualifiedName CONTAINER = new FullQualifiedName(NAMESPACE, CONTAINER_NAME);
 
-    public static final String ET_TODO_NAME = "Todo";
-    public static final FullQualifiedName ET_TODO = new FullQualifiedName(NAMESPACE, ET_TODO_NAME);
-    public static final String ES_TODOS_NAME = "Todos";
-
-    private EdmRepository repository;
+    private final EdmRepository repository;
 
     public EdmProvider(EdmRepository repository) {
         super();
@@ -31,31 +26,19 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
     }
 
     @Override
-    public CsdlEntityType getEntityType(FullQualifiedName entityTypeName) throws ODataException {
+    public CsdlEntityType getEntityType(FullQualifiedName entityTypeName) {
 
         return repository.findEntityType(entityTypeName).orElse(null);
     }
 
     @Override
-    public CsdlEntitySet getEntitySet(FullQualifiedName entityContainer, String entitySetName) throws ODataException {
+    public CsdlEntitySet getEntitySet(FullQualifiedName entityContainer, String entitySetName) {
 
-        CsdlEntitySet entitySet =
-                repository.findEntitySet(entitySetName).orElse(null);
-        /*
-        if (entityContainer.equals(CONTAINER)) {
-            if (entitySetName.equals(ES_TODOS_NAME)) {
-                entitySet = new CsdlEntitySet()
-                        .setName(ES_TODOS_NAME)
-                        .setType(ET_TODO);
-
-                return entitySet;
-            }
-        } */
-        return entitySet;
+        return repository.findEntitySet(entitySetName).orElse(null);
     }
 
     @Override
-    public CsdlEntityContainerInfo getEntityContainerInfo(FullQualifiedName entityContainerName) throws ODataException {
+    public CsdlEntityContainerInfo getEntityContainerInfo(FullQualifiedName entityContainerName) {
 
         if (entityContainerName == null || entityContainerName.equals(CONTAINER)) {
             CsdlEntityContainerInfo entityContainerInfo = new CsdlEntityContainerInfo();
@@ -66,13 +49,12 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
     }
 
     @Override
-    public List<CsdlSchema> getSchemas() throws ODataException {
+    public List<CsdlSchema> getSchemas() {
 
         CsdlSchema schema = new CsdlSchema();
         schema.setNamespace(NAMESPACE);
 
         List<CsdlEntityType> entityTypes = new ArrayList<>();
-        // entityTypes.add(getEntityType(ET_TODO));
         for (String item : repository.getEntityTypes()) {
             entityTypes.add(getEntityType(new FullQualifiedName(NAMESPACE, item)));
         }
@@ -86,10 +68,9 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
     }
 
     @Override
-    public CsdlEntityContainer getEntityContainer() throws ODataException {
+    public CsdlEntityContainer getEntityContainer() {
 
         List<CsdlEntitySet> entitySets = new ArrayList<>();
-        //  entitySets.add(getEntitySet(CONTAINER, ES_TODOS_NAME));
 
         for (String item : repository.getEntitySets()) {
             entitySets.add(getEntitySet(CONTAINER, item));
