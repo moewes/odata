@@ -9,5 +9,7 @@ public interface EntityProvider<T> {
 
     T create(Object entity); // TODO refactor errors?
 
+    void update(Map<String, String> keys, Object entity);
+
     void delete(Map<String, String> keys);
 }

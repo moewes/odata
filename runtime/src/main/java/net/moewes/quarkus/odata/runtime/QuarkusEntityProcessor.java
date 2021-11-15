@@ -1,8 +1,8 @@
 package net.moewes.quarkus.odata.runtime;
 
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import net.moewes.quarkus.odata.EntityProvider;
@@ -18,8 +18,6 @@ import org.apache.olingo.server.api.ODataRequest;
 import org.apache.olingo.server.api.ODataResponse;
 import org.apache.olingo.server.api.ServiceMetadata;
 import org.apache.olingo.server.api.deserializer.DeserializerException;
-import org.apache.olingo.server.api.deserializer.DeserializerResult;
-import org.apache.olingo.server.api.deserializer.ODataDeserializer;
 import org.apache.olingo.server.api.serializer.SerializerException;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriParameter;
@@ -43,7 +41,9 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
     }
 
     @Override
-    public void readEntity(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo, ContentType contentType) throws ODataApplicationException, ODataLibraryException {
+    public void readEntity(ODataRequest oDataRequest, ODataResponse oDataResponse,
+                           UriInfo uriInfo, ContentType contentType)
+            throws ODataApplicationException, ODataLibraryException {
 
         ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
 
@@ -53,42 +53,72 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
     }
 
     @Override
-    public void createEntity(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo, ContentType requestFormat, ContentType responseFormat) throws ODataApplicationException, ODataLibraryException {
+    public void createEntity(ODataRequest oDataRequest, ODataResponse oDataResponse,
+                             UriInfo uriInfo,
+                             ContentType requestFormat, ContentType responseFormat)
+            throws ODataApplicationException, ODataLibraryException {
 
         ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
 
         EdmEntitySet edmEntitySet = context.getEntitySet();
-        repository.findEntitySetDefinition(edmEntitySet.getName()).ifPresent(entitySet -> {
-            try {
-                Object serviceBean = repository.getServiceBean(entitySet);
-                if (serviceBean instanceof EntityProvider<?>) {
-
-                    InputStream inputStream = oDataRequest.getBody();
-                    ODataDeserializer deserializer = this.odata.createDeserializer(requestFormat);
-                    DeserializerResult result = deserializer.entity(inputStream, edmEntitySet.getEntityType());
-
-                    Entity entity = createData(entitySet, result.getEntity());
-
-                    context.respondWithEntity(entity, responseFormat, HttpStatusCode.CREATED, odata, serviceMetadata);
-                }
-            } catch (DeserializerException e) {
-                e.printStackTrace(); // TODO
-            } catch (SerializerException e) {
-                e.printStackTrace(); // TODO
-            }
-        });
+        EntitySet entitySet =
+                repository.findEntitySetDefinition(edmEntitySet.getName())
+                        .orElseThrow(() -> new ODataApplicationException("no entityset",
+                                HttpStatusCode.BAD_REQUEST.getStatusCode(), Locale.ENGLISH));
+        try {
+            Entity entity = createData(entitySet, context.getEntityFromRequest(odata,
+                    requestFormat));
+            context.respondWithEntity(entity, responseFormat, HttpStatusCode.CREATED, odata,
+                    serviceMetadata);
+        } catch (DeserializerException e) {
+            throw new ODataApplicationException("Cannot deserialize request data",
+                    HttpStatusCode.BAD_REQUEST.getStatusCode(), Locale.ENGLISH);
+        } catch (SerializerException e) {
+            throw new ODataApplicationException("Cannot seserialize request data",
+                    HttpStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), Locale.ENGLISH);
+        }
     }
 
     @Override
-    public void updateEntity(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo, ContentType contentType, ContentType contentType1) throws ODataApplicationException, ODataLibraryException {
+    public void updateEntity(ODataRequest oDataRequest, ODataResponse oDataResponse,
+                             UriInfo uriInfo, ContentType contentType, ContentType contentType1)
+            throws ODataApplicationException, ODataLibraryException {
 
         ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
 
+        EntitySet entitySet = repository.findEntitySetDefinition(context.getEntitySet().getName())
+                .orElseThrow(() -> new ODataApplicationException("",
+                        HttpStatusCode.BAD_REQUEST.getStatusCode(), Locale.ENGLISH));
+
+        Object serviceBean = repository.getServiceBean(entitySet);
+        if (serviceBean instanceof EntityProvider<?>) {
+            Map<String, String> keys = new HashMap<>();
+            odataEntityConverter.convertKeysToAppFormat(context.getKeyPredicates(), entitySet,
+                    keys);
+            Object old_data =
+                    ((EntityProvider<?>) serviceBean).find(keys)
+                            .orElseThrow(() -> new ODataApplicationException("Not found",
+                                    HttpStatusCode.NOT_FOUND.getStatusCode(), Locale.ENGLISH));
+
+            Object data = null;
+            if (context.isPatch()) {
+                data = odataEntityConverter
+                        .patchFrameworkEntityToAppData(context.getEntityFromRequest(odata,
+                                contentType), entitySet, old_data);
+            } else {
+                data = odataEntityConverter
+                        .convertFrameworkEntityToAppData(context.getEntityFromRequest(odata,
+                                contentType), entitySet);
+            }
+            ((EntityProvider<?>) serviceBean).update(keys, data);
+        }
         context.respondWithNoContent();
     }
 
     @Override
-    public void deleteEntity(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo) throws ODataApplicationException, ODataLibraryException {
+    public void deleteEntity(ODataRequest oDataRequest, ODataResponse oDataResponse,
+                             UriInfo uriInfo) throws ODataApplicationException,
+            ODataLibraryException {
 
         ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
         deleteData(context.getEntitySet(), context.getKeyPredicates());
@@ -121,7 +151,8 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
 
             Object data = odataEntityConverter.convertFrameworkEntityToAppData(entity, entitySet);
             Object createdData = ((EntityProvider<?>) serviceBean).create(data);
-            odataEntityConverter.convertDataToFrameworkEntity(createdEntity, entitySet, createdData);
+            odataEntityConverter.convertDataToFrameworkEntity(createdEntity, entitySet,
+                    createdData);
         }
         return createdEntity;
     }

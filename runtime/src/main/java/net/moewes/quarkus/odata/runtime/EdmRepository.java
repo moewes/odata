@@ -23,7 +23,7 @@ import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 @ApplicationScoped
 public class EdmRepository {
 
-    public static final String NAMESPACE = "OData.Demo"; // FIXME
+    public static final String NAMESPACE = "Quarkus.OData"; // FIXME
 
     private final Map<String, EntityType> entities = new HashMap<>();
     private final Map<String, EntitySet> entitySets = new HashMap<>();
@@ -99,11 +99,13 @@ public class EdmRepository {
     public Object getServiceBean(EntitySet entitySet) {
 
         try {
-            Class<?> beanClass = Class.forName(entitySet.getBeanClassName(), true, Thread.currentThread().getContextClassLoader());
+            Class<?> beanClass = Class.forName(entitySet.getBeanClassName(), true,
+                    Thread.currentThread().getContextClassLoader());
             Object serviceBean = CDI.current().select(beanClass, Default.Literal.INSTANCE).get();
             return serviceBean;
         } catch (ClassNotFoundException e) {
-            throw new ODataRuntimeException("Service class " + entitySet.getBeanClassName() + " not found");
+            throw new ODataRuntimeException("Service class " + entitySet.getBeanClassName() + " " +
+                    "not found");
         }
     }
 }

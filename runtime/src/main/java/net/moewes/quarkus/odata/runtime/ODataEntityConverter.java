@@ -22,12 +22,15 @@ public class ODataEntityConverter {
         this.repository = repository;
     }
 
-    void convertKeysToAppFormat(List<UriParameter> keyPredicates, EntitySet item, Map<String, String> keys) {
+    void convertKeysToAppFormat(List<UriParameter> keyPredicates, EntitySet item, Map<String,
+            String> keys) {
         for (UriParameter keyPredicate : keyPredicates) {
             String value = keyPredicate.getText();
-            EntityType entityType = repository.findEntityTypeDefinition(item.getEntityType()).orElseThrow(RuntimeException::new);
+            EntityType entityType =
+                    repository.findEntityTypeDefinition(item.getEntityType()).orElseThrow(RuntimeException::new);
 
-            EdmPrimitiveTypeKind edmType = entityType.getPropertyMap().get(keyPredicate.getName()).getEdmType();
+            EdmPrimitiveTypeKind edmType =
+                    entityType.getPropertyMap().get(keyPredicate.getName()).getEdmType();
             if (edmType == EdmPrimitiveTypeKind.String) { // TODO Refactor
                 value = value.substring(1, value.length() - 1);
             }
@@ -43,13 +46,17 @@ public class ODataEntityConverter {
             try {
                 Method getter = data.getClass().getDeclaredMethod("get" + entityProperty.getName());
                 Object result2 = getter.invoke(data);
-                entity.addProperty(new Property(null, entityProperty.getName(), ValueType.PRIMITIVE, result2));
+                entity.addProperty(new Property(null, entityProperty.getName(),
+                        ValueType.PRIMITIVE, result2));
             } catch (NoSuchMethodException e) {
-                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " not found");
+                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " not " +
+                        "found");
             } catch (InvocationTargetException e) {
-                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " InvocationTargetException ");
+                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " " +
+                        "InvocationTargetException ");
             } catch (IllegalAccessException e) {
-                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " IllegalAccessException ");
+                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " " +
+                        "IllegalAccessException ");
             }
         }
     }
@@ -62,10 +69,12 @@ public class ODataEntityConverter {
                 .orElseThrow(() -> new ODataRuntimeException("EntityType " + entitySet.getEntityType() + " not found"));
 
         try {
-            Class dataClass = Thread.currentThread().getContextClassLoader().loadClass(entityType.getClassName());
+            Class dataClass =
+                    Thread.currentThread().getContextClassLoader().loadClass(entityType.getClassName());
             data = dataClass.getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException e) {
-            throw new ODataRuntimeException("Entity Class for " + entityType.getName() + " not found");
+            throw new ODataRuntimeException("Entity Class for " + entityType.getName() + " not " +
+                    "found");
         } catch (InvocationTargetException e) {
             e.printStackTrace();
         } catch (InstantiationException e) {
@@ -80,17 +89,51 @@ public class ODataEntityConverter {
             try {
                 Property property = entity.getProperty(entityProperty.getName());
                 if (property != null) {
-                    Method setter = data.getClass().getDeclaredMethod("set" + entityProperty.getName(), String.class);
+                    Method setter =
+                            data.getClass().getDeclaredMethod("set" + entityProperty.getName(),
+                                    String.class);
                     setter.invoke(data, property.getValue());
                 }
             } catch (NoSuchMethodException e) {
-                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " not found");
+                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " not " +
+                        "found");
             } catch (InvocationTargetException e) {
-                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " InvocationTargetException ");
+                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " " +
+                        "InvocationTargetException ");
             } catch (IllegalAccessException e) {
-                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " IllegalAccessException ");
+                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " " +
+                        "IllegalAccessException ");
             }
         }
         return data;
+    }
+
+    public Object patchFrameworkEntityToAppData(Entity entity, EntitySet entitySet,
+                                                Object old_data) {
+
+        EntityType entityType = repository.findEntityTypeDefinition(entitySet.getEntityType())
+                .orElseThrow(() -> new ODataRuntimeException("EntityType " + entitySet.getEntityType() + " not found"));
+
+        for (EntityProperty entityProperty : entityType.getPropertyMap().values()) {
+            try {
+                Property property = entity.getProperty(entityProperty.getName());
+                if (property != null) {
+                    Method setter =
+                            old_data.getClass().getDeclaredMethod("set" + entityProperty.getName(),
+                                    String.class);
+                    setter.invoke(old_data, property.getValue());
+                }
+            } catch (NoSuchMethodException e) {
+                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " not " +
+                        "found");
+            } catch (InvocationTargetException e) {
+                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " " +
+                        "InvocationTargetException ");
+            } catch (IllegalAccessException e) {
+                throw new ODataRuntimeException("Getter for " + entityProperty.getName() + " " +
+                        "IllegalAccessException ");
+            }
+        }
+        return old_data;
     }
 }
