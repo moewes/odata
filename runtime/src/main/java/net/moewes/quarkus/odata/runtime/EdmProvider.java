@@ -1,15 +1,10 @@
 package net.moewes.quarkus.odata.runtime;
 
+import org.apache.olingo.commons.api.edm.FullQualifiedName;
+import org.apache.olingo.commons.api.edm.provider.*;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.olingo.commons.api.edm.FullQualifiedName;
-import org.apache.olingo.commons.api.edm.provider.CsdlAbstractEdmProvider;
-import org.apache.olingo.commons.api.edm.provider.CsdlEntityContainer;
-import org.apache.olingo.commons.api.edm.provider.CsdlEntityContainerInfo;
-import org.apache.olingo.commons.api.edm.provider.CsdlEntitySet;
-import org.apache.olingo.commons.api.edm.provider.CsdlEntityType;
-import org.apache.olingo.commons.api.edm.provider.CsdlSchema;
 
 public class EdmProvider extends CsdlAbstractEdmProvider {
 
@@ -28,13 +23,13 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
     @Override
     public CsdlEntityType getEntityType(FullQualifiedName entityTypeName) {
 
-        return repository.findEntityType(entityTypeName).orElse(null);
+        return repository.findCsdlForEntityType(entityTypeName).orElse(null);
     }
 
     @Override
     public CsdlEntitySet getEntitySet(FullQualifiedName entityContainer, String entitySetName) {
 
-        return repository.findEntitySet(entitySetName).orElse(null);
+        return repository.findCsdlForEntitySet(entitySetName).orElse(null);
     }
 
     @Override
@@ -55,10 +50,20 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
         schema.setNamespace(NAMESPACE);
 
         List<CsdlEntityType> entityTypes = new ArrayList<>();
-        for (String item : repository.getEntityTypes()) {
+        for (String item : repository.getEntityTypeNames()) {
             entityTypes.add(getEntityType(new FullQualifiedName(NAMESPACE, item)));
         }
         schema.setEntityTypes(entityTypes);
+        List<CsdlAction> actions = new ArrayList<>();
+        for (String action : repository.getActionNames()) {
+            actions.addAll(getActions(new FullQualifiedName(NAMESPACE, action)));
+        }
+        schema.setActions(actions);
+        List<CsdlFunction> functions = new ArrayList<>();
+        for (String function : repository.getFunctionNames()) {
+            functions.addAll(getFunctions(new FullQualifiedName(NAMESPACE, function)));
+        }
+        schema.setFunctions(functions);
 
         schema.setEntityContainer(getEntityContainer());
 
@@ -72,7 +77,7 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
 
         List<CsdlEntitySet> entitySets = new ArrayList<>();
 
-        for (String item : repository.getEntitySets()) {
+        for (String item : repository.getEntitySetNames()) {
             entitySets.add(getEntitySet(CONTAINER, item));
         }
 
@@ -81,5 +86,21 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
         entityContainer.setEntitySets(entitySets);
 
         return entityContainer;
+    }
+
+    @Override
+    public List<CsdlAction> getActions(FullQualifiedName actionName) {
+
+        List<CsdlAction> result = new ArrayList<>();
+        repository.findCsdlForAction(actionName).ifPresent(result::add);
+        return result;
+    }
+
+    @Override
+    public List<CsdlFunction> getFunctions(FullQualifiedName functionName) {
+
+        List<CsdlFunction> result = new ArrayList<>();
+        repository.findCsdlForFunction(functionName).ifPresent(result::add);
+        return result;
     }
 }

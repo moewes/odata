@@ -1,9 +1,5 @@
 package net.moewes.quarkus.odata.runtime;
 
-import java.io.InputStream;
-import java.util.Collection;
-import java.util.List;
-
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import org.apache.olingo.commons.api.data.ContextURL;
 import org.apache.olingo.commons.api.data.Entity;
@@ -13,12 +9,7 @@ import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpHeader;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
-import org.apache.olingo.server.api.OData;
-import org.apache.olingo.server.api.ODataApplicationException;
-import org.apache.olingo.server.api.ODataLibraryException;
-import org.apache.olingo.server.api.ODataRequest;
-import org.apache.olingo.server.api.ODataResponse;
-import org.apache.olingo.server.api.ServiceMetadata;
+import org.apache.olingo.server.api.*;
 import org.apache.olingo.server.api.processor.EntityCollectionProcessor;
 import org.apache.olingo.server.api.serializer.EntityCollectionSerializerOptions;
 import org.apache.olingo.server.api.serializer.ODataSerializer;
@@ -26,6 +17,10 @@ import org.apache.olingo.server.api.serializer.SerializerResult;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriResource;
 import org.apache.olingo.server.api.uri.UriResourceEntitySet;
+
+import java.io.InputStream;
+import java.util.Collection;
+import java.util.List;
 
 public class QuarkusEntityCollectionProcessor implements EntityCollectionProcessor {
 
@@ -70,7 +65,7 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
 
         EntityCollection collection = new EntityCollection();
 
-        repository.findEntitySetDefinition(edmEntitySet.getName()).ifPresent(entitySet -> {
+        repository.findEntitySet(edmEntitySet.getName()).ifPresent(entitySet -> {
             Object serviceBean = repository.getServiceBean(entitySet);
             if (serviceBean instanceof EntityCollectionProvider<?>) {
                 Object dataCollection = ((EntityCollectionProvider<?>) serviceBean).getCollection();

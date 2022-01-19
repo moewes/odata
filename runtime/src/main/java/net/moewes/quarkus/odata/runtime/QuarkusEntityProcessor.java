@@ -1,26 +1,21 @@
 package net.moewes.quarkus.odata.runtime;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
-import org.apache.olingo.server.api.OData;
-import org.apache.olingo.server.api.ODataApplicationException;
-import org.apache.olingo.server.api.ODataLibraryException;
-import org.apache.olingo.server.api.ODataRequest;
-import org.apache.olingo.server.api.ODataResponse;
-import org.apache.olingo.server.api.ServiceMetadata;
+import org.apache.olingo.server.api.*;
 import org.apache.olingo.server.api.deserializer.DeserializerException;
 import org.apache.olingo.server.api.serializer.SerializerException;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriParameter;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class QuarkusEntityProcessor implements org.apache.olingo.server.api.processor.EntityProcessor {
 
@@ -62,7 +57,7 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
 
         EdmEntitySet edmEntitySet = context.getEntitySet();
         EntitySet entitySet =
-                repository.findEntitySetDefinition(edmEntitySet.getName())
+                repository.findEntitySet(edmEntitySet.getName())
                         .orElseThrow(() -> new ODataApplicationException("no entityset",
                                 HttpStatusCode.BAD_REQUEST.getStatusCode(), Locale.ENGLISH));
         try {
@@ -74,7 +69,7 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
             throw new ODataApplicationException("Cannot deserialize request data",
                     HttpStatusCode.BAD_REQUEST.getStatusCode(), Locale.ENGLISH);
         } catch (SerializerException e) {
-            throw new ODataApplicationException("Cannot seserialize request data",
+            throw new ODataApplicationException("Cannot serialize request data",
                     HttpStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), Locale.ENGLISH);
         }
     }
@@ -86,7 +81,7 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
 
         ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
 
-        EntitySet entitySet = repository.findEntitySetDefinition(context.getEntitySet().getName())
+        EntitySet entitySet = repository.findEntitySet(context.getEntitySet().getName())
                 .orElseThrow(() -> new ODataApplicationException("",
                         HttpStatusCode.BAD_REQUEST.getStatusCode(), Locale.ENGLISH));
 
@@ -128,7 +123,7 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
     private Entity readData(EdmEntitySet edmEntitySet, List<UriParameter> keyPredicates) {
 
         Entity entity = new Entity();
-        repository.findEntitySetDefinition(edmEntitySet.getName()).ifPresent(entitySet -> {
+        repository.findEntitySet(edmEntitySet.getName()).ifPresent(entitySet -> {
 
             Object serviceBean = repository.getServiceBean(entitySet);
             if (serviceBean instanceof EntityProvider<?>) {
@@ -143,7 +138,7 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
         return entity;
     }
 
-    private Entity createData(EntitySet entitySet, Entity entity) {
+    private Entity createData(EntitySet entitySet, Entity entity) throws ODataApplicationException {
         Entity createdEntity = new Entity();
 
         Object serviceBean = repository.getServiceBean(entitySet);
@@ -159,7 +154,7 @@ public class QuarkusEntityProcessor implements org.apache.olingo.server.api.proc
 
     private void deleteData(EdmEntitySet edmEntitySet, List<UriParameter> keyPredicates) {
 
-        repository.findEntitySetDefinition(edmEntitySet.getName()).ifPresent(entitySet -> {
+        repository.findEntitySet(edmEntitySet.getName()).ifPresent(entitySet -> {
 
             Object serviceBean = repository.getServiceBean(entitySet);
             if (serviceBean instanceof EntityProvider<?>) {

@@ -12,8 +12,8 @@
     <name>Odata V4 - Runtime</name>
 
     <properties>
-        <odata.version>4.6.0</odata.version>
-        <lombok.version>1.18.12</lombok.version>
+        <odata.version>4.7.0</odata.version>
+        <lombok.version>1.18.22</lombok.version>
     </properties>
     <dependencies>
         <dependency>
@@ -67,7 +67,8 @@
                             <goal>extension-descriptor</goal>
                         </goals>
                         <configuration>
-                            <deployment>${project.groupId}:${project.artifactId}-deployment:${project.version}</deployment>
+                            <deployment>${project.groupId}:${project.artifactId}-deployment:${project.version}
+                            </deployment>
                         </configuration>
                     </execution>
                 </executions>
@@ -87,6 +88,14 @@
                             <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>11</source>
+                    <target>11</target>
                 </configuration>
             </plugin>
         </plugins>

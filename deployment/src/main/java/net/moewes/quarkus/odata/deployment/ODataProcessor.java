@@ -1,17 +1,6 @@
 package net.moewes.quarkus.odata.deployment;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.enterprise.context.ApplicationScoped;
-
-import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
-import io.quarkus.arc.deployment.BeanArchiveIndexBuildItem;
-import io.quarkus.arc.deployment.BeanContainerBuildItem;
-import io.quarkus.arc.deployment.BeanDefiningAnnotationBuildItem;
-import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
+import io.quarkus.arc.deployment.*;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
@@ -19,29 +8,25 @@ import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.undertow.deployment.ServletBuildItem;
-import net.moewes.quarkus.odata.annotations.EntityKey;
-import net.moewes.quarkus.odata.annotations.ODataEntity;
-import net.moewes.quarkus.odata.annotations.ODataService;
-import net.moewes.quarkus.odata.repository.EntityProperty;
-import net.moewes.quarkus.odata.repository.EntitySet;
-import net.moewes.quarkus.odata.repository.EntityType;
+import net.moewes.quarkus.odata.annotations.*;
+import net.moewes.quarkus.odata.repository.*;
 import net.moewes.quarkus.odata.runtime.EdmRepository;
 import net.moewes.quarkus.odata.runtime.ODataServiceRecorder;
 import net.moewes.quarkus.odata.runtime.ODataServlet;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
-import org.jboss.jandex.AnnotationInstance;
-import org.jboss.jandex.ClassInfo;
-import org.jboss.jandex.DotName;
-import org.jboss.jandex.IndexView;
-import org.jboss.jandex.MethodInfo;
-import org.jboss.jandex.Type;
+import org.jboss.jandex.*;
 import org.jboss.logging.Logger;
+
+import javax.enterprise.context.ApplicationScoped;
+import java.util.*;
 
 class ODataProcessor {
 
     private static final String FEATURE = "OData V4";
     private static final DotName SERVICE = DotName.createSimple(ODataService.class.getName());
-    private static final DotName ENTITYTYPE = DotName.createSimple(ODataEntity.class.getName());
+    private static final DotName ENTITY_TYPE = DotName.createSimple(ODataEntity.class.getName());
+    private static final DotName ACTION = DotName.createSimple(ODataAction.class.getName());
+    private static final DotName FUNCTION = DotName.createSimple(ODataFunction.class.getName());
     static private final DotName APPLICATION_SCOPED = DotName.createSimple(ApplicationScoped.class.getName());
 
     private static final Logger log = Logger.getLogger(ODataProcessor.class);
@@ -53,10 +38,9 @@ class ODataProcessor {
 
     @BuildStep
     ServletBuildItem createODataServlet() {
-        ServletBuildItem servletBuildItem = ServletBuildItem.builder("odata", ODataServlet.class.getName())
+        return ServletBuildItem.builder("odata", ODataServlet.class.getName())
                 .addMapping("/odata/*")
                 .build();
-        return servletBuildItem;
     }
 
     @BuildStep
@@ -67,7 +51,6 @@ class ODataProcessor {
     @BuildStep
     UnremovableBeanBuildItem unremovable() {
 
-        // Any bean that has MyService in its set of bean types is considered unremovable
         return UnremovableBeanBuildItem.beanTypes(ODataServlet.class);
     }
 
@@ -83,23 +66,93 @@ class ODataProcessor {
                          BeanContainerBuildItem beanContainer,
                          BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemProducer) {
 
+        Map<String, String> entityTypes = new HashMap<>();
+
         IndexView index = beanArchiveIndex.getIndex();
 
-        for (AnnotationInstance entityType : index.getAnnotations(ENTITYTYPE)) {
-            log.info("found EntityType " + entityType.target().toString());
+        for (AnnotationInstance entityType : index.getAnnotations(ENTITY_TYPE)) {
+            log.debug("found EntityType " + entityType.target().toString());
             String name = entityType.value().asString();
             recorder.registerEntityType(beanContainer.getValue(),
                     name, createEntityType(name, entityType.target().asClass()));
+            entityTypes.put(entityType.target().toString(), name);
         }
 
         Collection<AnnotationInstance> services = index.getAnnotations(SERVICE);
 
         for (AnnotationInstance service : services) {
-            log.info("found " + service.target().toString());
+            log.debug("found " + service.target().toString());
             String name = service.value().asString();
+
+            service.target().asClass().methods().forEach(methodInfo -> {
+                if (methodInfo.hasAnnotation(FUNCTION)) {
+                    String functionName = methodInfo.name();
+                    log.debug("found function " + functionName);
+                    Function function = new Function();
+                    function.setName(functionName);
+                    function.setEntitySet(name);
+                    // TODO Parameter
+                    recorder.registerFunction(beanContainer.getValue(), functionName, name, function);
+                }
+                if (methodInfo.hasAnnotation(ACTION)) {
+                    String actionName = methodInfo.name();
+                    log.debug("found action " + actionName);
+
+                    Action action = new Action();
+                    action.setName(actionName);
+                    action.setEntitySet(name);
+                    List<Parameter> actionParameters = new ArrayList<>();
+                    int i = 0;
+                    for (Type parameter : methodInfo.parameters()) {
+                        log.debug(parameter.toString());
+                        Parameter actionParameter = new Parameter();
+
+                        actionParameter.setName(methodInfo.parameterName(i));
+                        actionParameter.setTypeKind(parameter.kind().name());
+                        actionParameter.setTypeName(parameter.name().toString());
+                        if (entityTypes.containsKey(parameter.name().toString())) {
+                            actionParameter.setBindingParameter(true);
+                            actionParameter.setEntityType(entityTypes.get(parameter.name().toString()));
+                        } else {
+                            actionParameter.setEdmType(getEdmType(parameter.name().toString()));
+                        }
+                        actionParameters.add(actionParameter);
+                        log.debug("Parameter " + actionParameter);
+                        i++;
+                    }
+                    action.setParameter(actionParameters);
+
+                    Type returnType = methodInfo.returnType();
+                    Parameter returnParameter = new Parameter();
+                    returnParameter.setTypeName(returnType.name().toString());
+                    returnParameter.setTypeKind(returnType.kind().name());
+                    if (entityTypes.containsKey(returnType.name().toString())) {
+                        returnParameter.setBindingParameter(true);
+                        returnParameter.setEntityType(entityTypes.get(returnType.name().toString()));
+                    } else {
+                        returnParameter.setEdmType(getEdmType(returnType.name().toString()));
+                    }
+                    action.setReturnType(returnParameter);
+                    recorder.registerAction(beanContainer.getValue(), actionName, name, action);
+                }
+            });
+
             recorder.registerEntitySet(beanContainer.getValue(), name,
                     new EntitySet(name, service.value("entityType").asString(),
                             service.target().asClass().name().toString()));
+        }
+    }
+
+    private EdmPrimitiveTypeKind getEdmType(String typeName) {
+        switch (typeName) {
+            case "int":
+                return EdmPrimitiveTypeKind.Int32;
+            case "java.time.LocalDate":
+                return EdmPrimitiveTypeKind.Date;
+            case "java.time.LocalTime":
+                return EdmPrimitiveTypeKind.TimeOfDay;
+            default:
+                return EdmPrimitiveTypeKind.String;
         }
     }
 
@@ -108,8 +161,8 @@ class ODataProcessor {
         final List<MethodInfo> methods = classInfo.methods();
         final Map<String, EntityProperty> propertyMap = new HashMap<>();
 
-        String propertyName = null;
-        EntityProperty property = null;
+        String propertyName;
+        EntityProperty property;
 
         for (final MethodInfo method : methods) {
 
@@ -128,14 +181,9 @@ class ODataProcessor {
 
             if (method.name().startsWith("get") && method.parameters().size() == 0) {
                 Type returnType = method.returnType();
-                log.info("Prop: " + propertyName + "; Type: " + returnType.toString());
-                switch (returnType.toString()) {
-                    case "int":
-                        property.setEdmType(EdmPrimitiveTypeKind.Int32);
-                        break;
-                    default:
-                        property.setEdmType(EdmPrimitiveTypeKind.String);
-                }
+                log.debug("Prop: " + propertyName + "; Type: " + returnType.toString());
+                property.setEdmType(getEdmType(returnType.toString()));
+
             } else if (method.name().startsWith("set") && method.parameters().size() == 1
             ) {
                 //property.setSetter(method); // FIXME
@@ -145,7 +193,7 @@ class ODataProcessor {
         }
 
         classInfo.annotations().forEach((dotName, annotationInstances) -> {
-            log.info("Found " + dotName.toString());
+            log.debug("Found " + dotName.toString());
             if (DotName.createSimple(EntityKey.class.getName()).equals(dotName)) {
                 annotationInstances.forEach(annotationInstance -> {
                     char[] chars = annotationInstance.target().asField().name().toCharArray();
