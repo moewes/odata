@@ -26,6 +26,7 @@ class ODataProcessor {
     private static final DotName SERVICE = DotName.createSimple(ODataService.class.getName());
     private static final DotName ENTITY_TYPE = DotName.createSimple(ODataEntity.class.getName());
     private static final DotName ACTION = DotName.createSimple(ODataAction.class.getName());
+    private static final DotName NAVIGATION_BINDING = DotName.createSimple(ODataNavigationBinding.class.getName());
     private static final DotName FUNCTION = DotName.createSimple(ODataFunction.class.getName());
     static private final DotName APPLICATION_SCOPED = DotName.createSimple(ApplicationScoped.class.getName());
 
@@ -83,6 +84,7 @@ class ODataProcessor {
         for (AnnotationInstance service : services) {
             log.debug("found " + service.target().toString());
             String name = service.value().asString();
+            List<Action> navigationBindings = new ArrayList<>();
 
             service.target().asClass().methods().forEach(methodInfo -> {
                 if (methodInfo.hasAnnotation(FUNCTION)) {
@@ -127,7 +129,7 @@ class ODataProcessor {
                     returnParameter.setTypeName(returnType.name().toString());
                     returnParameter.setTypeKind(returnType.kind().name());
                     if (entityTypes.containsKey(returnType.name().toString())) {
-                        returnParameter.setBindingParameter(true);
+                        returnParameter.setBindingParameter(true); // TODO is that right?
                         returnParameter.setEntityType(entityTypes.get(returnType.name().toString()));
                     } else {
                         returnParameter.setEdmType(getEdmType(returnType.name().toString()));
@@ -135,12 +137,57 @@ class ODataProcessor {
                     action.setReturnType(returnParameter);
                     recorder.registerAction(beanContainer.getValue(), actionName, name, action);
                 }
+                if (methodInfo.hasAnnotation(NAVIGATION_BINDING)) {
+                    String actionName = methodInfo.name();
+                    log.info("found Navigation" + actionName); // TODO Logging
+
+                    Action action = new Action();
+                    action.setName(actionName);
+                    action.setEntitySet(name);
+                    List<Parameter> actionParameters = new ArrayList<>();
+                    int i = 0;
+                    for (Type parameterType : methodInfo.parameters()) { // FIXME es sollte nur einen Parameter geben! und der sollte dem EntityType des Sets entsprechen
+                        Parameter actionParameter = createParameter(entityTypes, parameterType);
+                        actionParameter.setName(methodInfo.parameterName(i));
+                        actionParameters.add(actionParameter);
+                        i++;
+                    }
+                    action.setParameter(actionParameters);
+
+                    Type returnType = methodInfo.returnType();
+                    Parameter returnParameter = createParameter(entityTypes, returnType);
+                    action.setReturnType(returnParameter);
+                    // recorder.registerAction(beanContainer.getValue(), actionName, name, action);
+                    navigationBindings.add(action);
+                }
             });
 
             recorder.registerEntitySet(beanContainer.getValue(), name,
                     new EntitySet(name, service.value("entityType").asString(),
-                            service.target().asClass().name().toString()));
+                            service.target().asClass().name().toString(), navigationBindings));
         }
+    }
+
+    private Parameter createParameter(Map<String, String> entityTypes, Type parameterType) {
+        log.info(parameterType.toString()); // TODO Logging
+        Parameter parameter = new Parameter();
+
+        if ("java.util.List".equals(parameterType.name().toString()) && parameterType.kind().equals(Type.Kind.PARAMETERIZED_TYPE)) {
+            parameter.setCollection(true);
+            parameter.setTypeName(parameterType.asParameterizedType().arguments().get(0).name().toString());
+        } else {
+            parameter.setTypeName(parameterType.name().toString());
+        }
+        parameter.setTypeKind(parameterType.kind().name());
+
+        if (entityTypes.containsKey(parameter.getTypeName())) {
+            parameter.setBindingParameter(true);
+            parameter.setEntityType(entityTypes.get(parameter.getTypeName()));
+        } else {
+            parameter.setEdmType(getEdmType(parameter.getTypeName()));
+        }
+        log.info("Parameter " + parameter); // TODO Logging
+        return parameter;
     }
 
     private EdmPrimitiveTypeKind getEdmType(String typeName) {

@@ -14,4 +14,5 @@ public class Parameter {
     private boolean bindingParameter;
     private String entityType;
     private EdmPrimitiveTypeKind edmType;
+    private boolean collection;
 }

@@ -60,7 +60,10 @@ public class EdmRepository {
 
     public List<String> getFunctionNames() {
         List<String> result = new ArrayList<>();
-        result.addAll(functions.values().stream().map(Function::getName).collect(Collectors.toList()));
+        result.addAll(functions.values()
+                .stream()
+                .map(Function::getName)
+                .collect(Collectors.toList()));
         return result;
     }
 
@@ -96,9 +99,25 @@ public class EdmRepository {
 
     public CsdlEntitySet getCsdlForEntitySet(EntitySet entitySet) {
 
-        return new CsdlEntitySet()
+        List<CsdlNavigationPropertyBinding> navigationPropertyBindings = new ArrayList<>();
+        entitySet.getNavigationBindings().forEach(navigationBinding -> {
+            CsdlNavigationPropertyBinding csdlNavigationPropertyBinding =
+                    new CsdlNavigationPropertyBinding();
+            findEntitySetForEntityTypeName(navigationBinding.getReturnType()
+                    .getEntityType()).ifPresent(targetEntitySet -> {
+                csdlNavigationPropertyBinding.setPath(targetEntitySet.getName());
+                csdlNavigationPropertyBinding.setTarget(targetEntitySet.getName());
+                navigationPropertyBindings.add(csdlNavigationPropertyBinding);
+            });
+        });
+
+        CsdlEntitySet csdlEntitySet = new CsdlEntitySet()
                 .setName(entitySet.getName())
-                .setType(new FullQualifiedName(NAMESPACE, entitySet.getEntityType()));
+                .setType(new FullQualifiedName(NAMESPACE, entitySet.getEntityType()))
+                .setNavigationPropertyBindings(navigationPropertyBindings);
+
+
+        return csdlEntitySet;
     }
 
     public Optional<CsdlEntityType> findCsdlForEntityType(FullQualifiedName entityTypeName) {
@@ -123,8 +142,32 @@ public class EdmRepository {
                     .setName(entityType.getName())
                     .setProperties(csdlPropertyList)
                     .setKey(keys);
+
+            List<CsdlNavigationProperty> navigationProperties = new ArrayList<>();
+            findEntitySetForEntityTypeName(entityTypeName.getName()).ifPresent(myEntitySet -> {
+                myEntitySet.getNavigationBindings().forEach(action -> {
+                    String targetEntityType = action.getReturnType().getEntityType();
+                    CsdlNavigationProperty navProp = new CsdlNavigationProperty();
+                    findEntitySetForEntityTypeName(targetEntityType).ifPresent(targetEntitySet -> {
+                        navProp.setName(targetEntitySet.getName())
+                                .setCollection(true)
+                                .setType(new FullQualifiedName(NAMESPACE, targetEntityType));
+                        navigationProperties.add(navProp);
+                    });
+                });
+            });
+            csdlEntityType.setNavigationProperties(navigationProperties);
         }
         return Optional.ofNullable(csdlEntityType);
+    }
+
+    private Optional<EntitySet> findEntitySetForEntityTypeName(String name) {
+        for (EntitySet entitySet : entitySets.values()) {
+            if (entitySet.getEntityType().equals(name)) {
+                return Optional.of(entitySet);
+            }
+        }
+        return Optional.empty();
     }
 
     public Optional<CsdlAction> findCsdlForAction(FullQualifiedName actionName) {
@@ -144,7 +187,8 @@ public class EdmRepository {
 
                 if (parameter.isBindingParameter()) {
                     csdlParameter.setName(parameter.getEntityType());
-                    csdlParameter.setType(new FullQualifiedName(NAMESPACE, parameter.getEntityType()));
+                    csdlParameter.setType(new FullQualifiedName(NAMESPACE,
+                            parameter.getEntityType()));
                     finalCsdlAction.setBound(true);
                 } else {
                     csdlParameter.setName(parameter.getName());
@@ -157,7 +201,9 @@ public class EdmRepository {
 
             csdlAction.setParameters(parameters);
 
-            csdlAction.setReturnType(new CsdlReturnType().setType(action.getReturnType().getEdmType().getFullQualifiedName()).setCollection(false));
+            csdlAction.setReturnType(new CsdlReturnType().setType(action.getReturnType()
+                    .getEdmType()
+                    .getFullQualifiedName()).setCollection(false));
         }
         return Optional.ofNullable(csdlAction);
     }
@@ -172,7 +218,8 @@ public class EdmRepository {
             List<CsdlParameter> parameters = new ArrayList<>();
             // First Parameter bound Entity
             String entitySet = function.getEntitySet();
-            EntitySet entitySet1 = findEntitySet(entitySet).orElseThrow(() -> new ODataRuntimeException("FIXME"));
+            EntitySet entitySet1 =
+                    findEntitySet(entitySet).orElseThrow(() -> new ODataRuntimeException("FIXME"));
             CsdlParameter es_param = new CsdlParameter();
             es_param.setName(entitySet1.getEntityType());
             es_param.setType(new FullQualifiedName(NAMESPACE, entitySet1.getEntityType()));
@@ -183,7 +230,8 @@ public class EdmRepository {
                     .setName(function.getName())
                     .setParameters(parameters)
                     .setBound(true)
-                    .setReturnType(new CsdlReturnType().setType(EdmPrimitiveTypeKind.String.getFullQualifiedName()).setCollection(false));
+                    .setReturnType(new CsdlReturnType().setType(EdmPrimitiveTypeKind.String.getFullQualifiedName())
+                            .setCollection(false));
         }
         return Optional.ofNullable(csdlFunction);
     }
