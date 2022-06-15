@@ -116,7 +116,12 @@ public class EdmRepository {
                 .setType(new FullQualifiedName(NAMESPACE, entitySet.getEntityType()))
                 .setNavigationPropertyBindings(navigationPropertyBindings);
 
-
+        /*
+        csdlEntitySet.setAnnotations(Arrays.asList(new CsdlAnnotation()
+                .setTerm(new FullQualifiedName(NAMESPACE, "Term").getFullQualifiedNameAsString())
+                .setExpression(new CsdlConstantExpression(CsdlConstantExpression
+                        .ConstantExpressionType.String, "true"))));
+        */ // TODO
         return csdlEntitySet;
     }
 

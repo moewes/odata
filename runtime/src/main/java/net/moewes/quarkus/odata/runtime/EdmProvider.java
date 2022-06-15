@@ -1,17 +1,20 @@
 package net.moewes.quarkus.odata.runtime;
 
+import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.apache.olingo.commons.api.edm.provider.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class EdmProvider extends CsdlAbstractEdmProvider {
 
     public static final String NAMESPACE = "Quarkus.OData";
 
     public static final String CONTAINER_NAME = "Container";
-    public static final FullQualifiedName CONTAINER = new FullQualifiedName(NAMESPACE, CONTAINER_NAME);
+    public static final FullQualifiedName CONTAINER =
+            new FullQualifiedName(NAMESPACE, CONTAINER_NAME);
 
     private final EdmRepository repository;
 
@@ -65,6 +68,12 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
         }
         schema.setFunctions(functions);
 
+        /*
+        List<CsdlTerm> terms = new ArrayList<>();
+        terms.add(getTerm(new FullQualifiedName(NAMESPACE, "Term")));
+        schema.setTerms(terms);
+        */ // TODO
+
         schema.setEntityContainer(getEntityContainer());
 
         List<CsdlSchema> schemas = new ArrayList<>();
@@ -102,5 +111,14 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
         List<CsdlFunction> result = new ArrayList<>();
         repository.findCsdlForFunction(functionName).ifPresent(result::add);
         return result;
+    }
+
+    @Override
+    public CsdlTerm getTerm(FullQualifiedName termName) {
+
+        Logger.getLogger("term").info(termName.getFullQualifiedNameAsString());
+        CsdlTerm term = new CsdlTerm();
+        term.setType(EdmPrimitiveTypeKind.String.toString()).setName("Term");
+        return term;
     }
 }
