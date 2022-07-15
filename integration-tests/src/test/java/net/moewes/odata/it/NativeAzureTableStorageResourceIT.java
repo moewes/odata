@@ -1,4 +1,4 @@
-package net.moewes.azure.table.storage.it;
+package net.moewes.odata.it;
 
 import io.quarkus.test.junit.NativeImageTest;
 

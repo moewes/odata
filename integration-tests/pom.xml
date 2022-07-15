@@ -7,8 +7,8 @@
     <artifactId>odata-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
   </parent>
-  <artifactId>azure-table-storage-integration-tests</artifactId>
-  <name>Azure Table Storage - Integration Tests</name>
+  <artifactId>integration-tests</artifactId>
+  <name>Quarkus Odata V4 - Integration Tests</name>
   <dependencies>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -16,7 +16,7 @@
     </dependency>
     <dependency>
       <groupId>net.moewes</groupId>
-      <artifactId>azure-table-storage</artifactId>
+      <artifactId>quarkus-odata</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -28,6 +28,11 @@
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.24</version>
     </dependency>
   </dependencies>
   <build>
@@ -73,7 +78,6 @@
                   <systemPropertyVariables>
                     <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
                     <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
-                    <maven.home>${maven.home}</maven.home>
                   </systemPropertyVariables>
                 </configuration>
               </execution>
