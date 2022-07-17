@@ -2,9 +2,13 @@ package net.moewes.odata.it;
 
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.EntityProvider;
+import net.moewes.quarkus.odata.annotations.ODataAction;
+import net.moewes.quarkus.odata.annotations.ODataFunction;
+import net.moewes.quarkus.odata.annotations.ODataNavigationBinding;
 import net.moewes.quarkus.odata.annotations.ODataService;
 import org.apache.olingo.server.api.ODataApplicationException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,12 +17,19 @@ import java.util.Optional;
 public class MyEntityService implements EntityProvider<MyEntity>, EntityCollectionProvider<MyEntity> {
     @Override
     public List<MyEntity> getCollection() {
-        return null;
+
+        List<MyEntity> result = new ArrayList<>();
+        return result;
     }
 
     @Override
     public Optional<MyEntity> find(Map<String, String> keys) {
-        return Optional.empty();
+
+        MyEntity entity = new MyEntity();
+        entity.setId(keys.get("Id"));
+        entity.setName("Entity with id " + entity.getId());
+
+        return Optional.of(entity);
     }
 
     @Override
@@ -34,5 +45,20 @@ public class MyEntityService implements EntityProvider<MyEntity>, EntityCollecti
     @Override
     public void delete(Map<String, String> keys) {
 
+    }
+
+    @ODataNavigationBinding()
+    public List<MySecondEntity> getNavigation(MyEntity entity) {
+        return null;
+    }
+
+    @ODataAction
+    public String myAction(MyEntity entity, String parameter) {
+        return "myAction on MyEntity with id " + entity.getId() + " and parameter " + parameter;
+    }
+
+    @ODataFunction
+    public String myFunction( MyEntity entity) {
+        return "myFunction";
     }
 }
