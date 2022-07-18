@@ -21,8 +21,6 @@ public class IntegrationTest {
                         "Name=", "MyService",">"));
     }
 
-
-
     @Test
     public void testAction() {
 
