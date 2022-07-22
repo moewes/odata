@@ -32,7 +32,8 @@ public class ODataEntityConverter {
         for (UriParameter keyPredicate : keyPredicates) {
             String value = keyPredicate.getText();
             EntityType entityType =
-                    repository.findEntityType(item.getEntityType()).orElseThrow(RuntimeException::new);
+                    repository.findEntityType(item.getEntityType())
+                            .orElseThrow(RuntimeException::new);
 
             EdmPrimitiveTypeKind edmType =
                     entityType.getPropertyMap().get(keyPredicate.getName()).getEdmType();
@@ -49,7 +50,8 @@ public class ODataEntityConverter {
 
         for (EntityProperty entityProperty : entityType.getPropertyMap().values()) {
             try {
-                Method getter = data.getClass().getDeclaredMethod("get" + entityProperty.getName());
+                Method getter =
+                        data.getClass().getDeclaredMethod(entityProperty.getGetterName());
                 Object result2 = getter.invoke(data);
                 /*
                 switch (entityProperty.getEdmType()) {
@@ -89,7 +91,9 @@ public class ODataEntityConverter {
 
         try {
             Class dataClass =
-                    Thread.currentThread().getContextClassLoader().loadClass(entityType.getClassName());
+                    Thread.currentThread()
+                            .getContextClassLoader()
+                            .loadClass(entityType.getClassName());
             data = dataClass.getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException e) {
             throw new ODataRuntimeException("Entity Class for " + entityType.getName() + " not " +
@@ -170,12 +174,16 @@ public class ODataEntityConverter {
     }
 
     private Class getValueClass(EdmPrimitiveTypeKind edmType) {
-
+        // TODO Refactor bundle that in a central enum for type to edm and vice versa
         switch (edmType) {
             case Date:
                 return LocalDate.class;
             case TimeOfDay:
                 return LocalTime.class;
+            case Int32:
+                return int.class;
+            case Boolean:
+                return boolean.class;
             default:
                 return String.class;
         }

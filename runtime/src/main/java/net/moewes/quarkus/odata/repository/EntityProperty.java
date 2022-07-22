@@ -9,4 +9,5 @@ public class EntityProperty {
     private String name;
     private EdmPrimitiveTypeKind edmType;
     private boolean key;
+    private String getterName;
 }

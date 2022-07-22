@@ -1,6 +1,5 @@
 package net.moewes.quarkus.odata.runtime;
 
-import org.apache.olingo.commons.api.edmx.EdmxReference;
 import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataHttpHandler;
 import org.apache.olingo.server.api.ServiceMetadata;
@@ -13,6 +12,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 @WebServlet
 public class ODataServlet extends HttpServlet {
@@ -20,11 +20,17 @@ public class ODataServlet extends HttpServlet {
     @Inject
     EdmRepository repository;
 
-    @Override
-    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    @Inject
+    CsdlBuilder csdlBuilder;
 
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+
+        Logger.getLogger("req").info(req.getMethod() + " " + req.getPathInfo());
         OData odata = OData.newInstance();
-        ServiceMetadata edm = odata.createServiceMetadata(new EdmProvider(repository), new ArrayList<EdmxReference>());
+        ServiceMetadata edm = odata.createServiceMetadata(new EdmProvider(repository, csdlBuilder),
+                new ArrayList<>());
         ODataHttpHandler handler = odata.createHandler(edm);
         handler.register(new QuarkusEntityCollectionProcessor(repository));
         handler.register(new QuarkusEntityProcessor(repository));

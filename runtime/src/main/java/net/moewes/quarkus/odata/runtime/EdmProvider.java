@@ -5,6 +5,7 @@ import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.apache.olingo.commons.api.edm.provider.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -17,22 +18,24 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
             new FullQualifiedName(NAMESPACE, CONTAINER_NAME);
 
     private final EdmRepository repository;
+    private final CsdlBuilder csdlBuilder;
 
-    public EdmProvider(EdmRepository repository) {
+    public EdmProvider(EdmRepository repository, CsdlBuilder csdlBuilder) {
         super();
         this.repository = repository;
+        this.csdlBuilder = csdlBuilder;
     }
 
     @Override
     public CsdlEntityType getEntityType(FullQualifiedName entityTypeName) {
 
-        return repository.findCsdlForEntityType(entityTypeName).orElse(null);
+        return csdlBuilder.findCsdlForEntityType(entityTypeName).orElse(null);
     }
 
     @Override
     public CsdlEntitySet getEntitySet(FullQualifiedName entityContainer, String entitySetName) {
 
-        return repository.findCsdlForEntitySet(entitySetName).orElse(null);
+        return csdlBuilder.findCsdlForEntitySet(entitySetName).orElse(null);
     }
 
     @Override
@@ -101,7 +104,7 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
     public List<CsdlAction> getActions(FullQualifiedName actionName) {
 
         List<CsdlAction> result = new ArrayList<>();
-        repository.findCsdlForAction(actionName).ifPresent(result::add);
+        csdlBuilder.findCsdlForAction(actionName).ifPresent(result::add);
         return result;
     }
 
@@ -109,7 +112,7 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
     public List<CsdlFunction> getFunctions(FullQualifiedName functionName) {
 
         List<CsdlFunction> result = new ArrayList<>();
-        repository.findCsdlForFunction(functionName).ifPresent(result::add);
+        csdlBuilder.findCsdlForFunction(functionName).ifPresent(result::add);
         return result;
     }
 
@@ -118,7 +121,42 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
 
         Logger.getLogger("term").info(termName.getFullQualifiedNameAsString());
         CsdlTerm term = new CsdlTerm();
-        term.setType(EdmPrimitiveTypeKind.String.toString()).setName("Term");
+        term.setName(termName.getName());
+        CsdlComplexType type = new CsdlComplexType();
+        type.setName("InsertRestrictionsType");
+        CsdlProperty property = new CsdlProperty();
+        property.setName("Insertable")
+                .setType(EdmPrimitiveTypeKind.Boolean.toString())
+                .setDefaultValue("true");
+        type.setProperties(Arrays.asList(property));
+        term.setType("x.y.z");
+
         return term;
     }
+
+
+    /*
+        @Override
+        public CsdlComplexType getComplexType(FullQualifiedName complexTypeName) throws ODataException {
+
+            Logger.getLogger("type").info(complexTypeName.getFullQualifiedNameAsString());
+            CsdlComplexType type = new CsdlComplexType();
+            type.setName("InsertRestrictionsType");
+            CsdlProperty property = new CsdlProperty();
+            property.setName("Insertable")
+                    .setType(EdmPrimitiveTypeKind.Boolean.toString())
+                    .setDefaultValue("true");
+            type.setProperties(Arrays.asList(property));
+            return type;
+        }
+    */
+
+    /*@Override
+    public CsdlTypeDefinition getTypeDefinition(FullQualifiedName typeDefinitionName)
+            throws ODataException {
+        Logger.getLogger("typeDef").info(typeDefinitionName.getFullQualifiedNameAsString());
+        return super.getTypeDefinition(typeDefinitionName);
+    }
+
+     */
 }

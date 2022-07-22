@@ -1,9 +1,9 @@
 package net.moewes.quarkus.odata.runtime;
 
-import net.moewes.quarkus.odata.repository.*;
-import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
-import org.apache.olingo.commons.api.edm.FullQualifiedName;
-import org.apache.olingo.commons.api.edm.provider.*;
+import net.moewes.quarkus.odata.repository.Action;
+import net.moewes.quarkus.odata.repository.EntitySet;
+import net.moewes.quarkus.odata.repository.EntityType;
+import net.moewes.quarkus.odata.repository.Function;
 import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -14,9 +14,7 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class EdmRepository {
-
-    public static final String NAMESPACE = "Quarkus.OData"; // FIXME
-
+    
     private final Map<String, EntityType> entities = new HashMap<>();
     private final Map<String, EntitySet> entitySets = new HashMap<>();
     private final Map<String, Action> actions = new HashMap<>();
@@ -91,154 +89,13 @@ public class EdmRepository {
         }
     }
 
-    public Optional<CsdlEntitySet> findCsdlForEntitySet(String entitySetName) {
-
-        EntitySet entitySet = findEntitySet(entitySetName).orElse(null);
-        return Optional.ofNullable(entitySet != null ? getCsdlForEntitySet(entitySet) : null);
-    }
-
-    public CsdlEntitySet getCsdlForEntitySet(EntitySet entitySet) {
-
-        List<CsdlNavigationPropertyBinding> navigationPropertyBindings = new ArrayList<>();
-        entitySet.getNavigationBindings().forEach(navigationBinding -> {
-            CsdlNavigationPropertyBinding csdlNavigationPropertyBinding =
-                    new CsdlNavigationPropertyBinding();
-            findEntitySetForEntityTypeName(navigationBinding.getReturnType()
-                    .getEntityType()).ifPresent(targetEntitySet -> {
-                csdlNavigationPropertyBinding.setPath(targetEntitySet.getName());
-                csdlNavigationPropertyBinding.setTarget(targetEntitySet.getName());
-                navigationPropertyBindings.add(csdlNavigationPropertyBinding);
-            });
-        });
-
-        CsdlEntitySet csdlEntitySet = new CsdlEntitySet()
-                .setName(entitySet.getName())
-                .setType(new FullQualifiedName(NAMESPACE, entitySet.getEntityType()))
-                .setNavigationPropertyBindings(navigationPropertyBindings);
-
-        /*
-        csdlEntitySet.setAnnotations(Arrays.asList(new CsdlAnnotation()
-                .setTerm(new FullQualifiedName(NAMESPACE, "Term").getFullQualifiedNameAsString())
-                .setExpression(new CsdlConstantExpression(CsdlConstantExpression
-                        .ConstantExpressionType.String, "true"))));
-        */ // TODO
-        return csdlEntitySet;
-    }
-
-    public Optional<CsdlEntityType> findCsdlForEntityType(FullQualifiedName entityTypeName) {
-
-        CsdlEntityType csdlEntityType = null;
-
-        if (entities.containsKey(entityTypeName.getName())) {
-            EntityType entityType = entities.get(entityTypeName.getName());
-            List<CsdlProperty> csdlPropertyList = new ArrayList<>();
-            entityType.getPropertyMap().values().forEach(property -> {
-                CsdlProperty csdlProperty = new CsdlProperty()
-                        .setName(property.getName())
-                        .setType(property.getEdmType().getFullQualifiedName());
-                csdlPropertyList.add(csdlProperty);
-            });
-            List<CsdlPropertyRef> keys = entityType.getPropertyMap().values().stream()
-                    .filter(EntityProperty::isKey)
-                    .map(item1 -> new CsdlPropertyRef().setName(item1.getName()))
-                    .collect(Collectors.toList());
-
-            csdlEntityType = new CsdlEntityType()
-                    .setName(entityType.getName())
-                    .setProperties(csdlPropertyList)
-                    .setKey(keys);
-
-            List<CsdlNavigationProperty> navigationProperties = new ArrayList<>();
-            findEntitySetForEntityTypeName(entityTypeName.getName()).ifPresent(myEntitySet -> {
-                myEntitySet.getNavigationBindings().forEach(action -> {
-                    String targetEntityType = action.getReturnType().getEntityType();
-                    CsdlNavigationProperty navProp = new CsdlNavigationProperty();
-                    findEntitySetForEntityTypeName(targetEntityType).ifPresent(targetEntitySet -> {
-                        navProp.setName(targetEntitySet.getName())
-                                .setCollection(true)
-                                .setType(new FullQualifiedName(NAMESPACE, targetEntityType));
-                        navigationProperties.add(navProp);
-                    });
-                });
-            });
-            csdlEntityType.setNavigationProperties(navigationProperties);
-        }
-        return Optional.ofNullable(csdlEntityType);
-    }
-
-    private Optional<EntitySet> findEntitySetForEntityTypeName(String name) {
+    public Optional<EntitySet> findEntitySetForEntityTypeName(String name) {
         for (EntitySet entitySet : entitySets.values()) {
             if (entitySet.getEntityType().equals(name)) {
                 return Optional.of(entitySet);
             }
         }
         return Optional.empty();
-    }
-
-    public Optional<CsdlAction> findCsdlForAction(FullQualifiedName actionName) {
-
-        CsdlAction csdlAction = null;
-
-        if (actions.containsKey(actionName.getName())) {
-            Action action = actions.get(actionName.getName());
-
-            csdlAction = new CsdlAction()
-                    .setName(action.getName());
-
-            List<CsdlParameter> parameters = new ArrayList<>();
-            CsdlAction finalCsdlAction = csdlAction;
-            action.getParameter().forEach(parameter -> {
-                CsdlParameter csdlParameter = new CsdlParameter();
-
-                if (parameter.isBindingParameter()) {
-                    csdlParameter.setName(parameter.getEntityType());
-                    csdlParameter.setType(new FullQualifiedName(NAMESPACE,
-                            parameter.getEntityType()));
-                    finalCsdlAction.setBound(true);
-                } else {
-                    csdlParameter.setName(parameter.getName());
-                    csdlParameter.setType(parameter.getEdmType().getFullQualifiedName());
-                }
-
-                csdlParameter.setCollection(false);
-                parameters.add(csdlParameter);
-            });
-
-            csdlAction.setParameters(parameters);
-
-            csdlAction.setReturnType(new CsdlReturnType().setType(action.getReturnType()
-                    .getEdmType()
-                    .getFullQualifiedName()).setCollection(false));
-        }
-        return Optional.ofNullable(csdlAction);
-    }
-
-    public Optional<CsdlFunction> findCsdlForFunction(FullQualifiedName functionName) {
-
-        CsdlFunction csdlFunction = null;
-
-        if (functions.containsKey(functionName.getName())) {
-            Function function = functions.get(functionName.getName());
-
-            List<CsdlParameter> parameters = new ArrayList<>();
-            // First Parameter bound Entity
-            String entitySet = function.getEntitySet();
-            EntitySet entitySet1 =
-                    findEntitySet(entitySet).orElseThrow(() -> new ODataRuntimeException("FIXME"));
-            CsdlParameter es_param = new CsdlParameter();
-            es_param.setName(entitySet1.getEntityType());
-            es_param.setType(new FullQualifiedName(NAMESPACE, entitySet1.getEntityType()));
-            es_param.setCollection(false);
-            parameters.add(es_param);
-
-            csdlFunction = new CsdlFunction()
-                    .setName(function.getName())
-                    .setParameters(parameters)
-                    .setBound(true)
-                    .setReturnType(new CsdlReturnType().setType(EdmPrimitiveTypeKind.String.getFullQualifiedName())
-                            .setCollection(false));
-        }
-        return Optional.ofNullable(csdlFunction);
     }
 }
 

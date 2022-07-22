@@ -10,6 +10,7 @@ import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.undertow.deployment.ServletBuildItem;
 import net.moewes.quarkus.odata.annotations.*;
 import net.moewes.quarkus.odata.repository.*;
+import net.moewes.quarkus.odata.runtime.CsdlBuilder;
 import net.moewes.quarkus.odata.runtime.EdmRepository;
 import net.moewes.quarkus.odata.runtime.ODataServiceRecorder;
 import net.moewes.quarkus.odata.runtime.ODataServlet;
@@ -23,12 +24,14 @@ import java.util.*;
 class ODataProcessor {
 
     private static final String FEATURE = "OData V4";
-    private static final DotName SERVICE = DotName.createSimple(ODataService.class.getName());
+    private static final DotName ENTITY_SET = DotName.createSimple(ODataEntitySet.class.getName());
     private static final DotName ENTITY_TYPE = DotName.createSimple(ODataEntity.class.getName());
     private static final DotName ACTION = DotName.createSimple(ODataAction.class.getName());
-    private static final DotName NAVIGATION_BINDING = DotName.createSimple(ODataNavigationBinding.class.getName());
+    private static final DotName NAVIGATION_BINDING =
+            DotName.createSimple(ODataNavigationBinding.class.getName());
     private static final DotName FUNCTION = DotName.createSimple(ODataFunction.class.getName());
-    static private final DotName APPLICATION_SCOPED = DotName.createSimple(ApplicationScoped.class.getName());
+    static private final DotName APPLICATION_SCOPED =
+            DotName.createSimple(ApplicationScoped.class.getName());
 
     private static final Logger log = Logger.getLogger(ODataProcessor.class);
 
@@ -46,7 +49,8 @@ class ODataProcessor {
 
     @BuildStep
     AdditionalBeanBuildItem beans() {
-        return new AdditionalBeanBuildItem(EdmRepository.class, ODataServlet.class);
+        return new AdditionalBeanBuildItem(EdmRepository.class,
+                CsdlBuilder.class, ODataServlet.class);
     }
 
     @BuildStep
@@ -57,15 +61,51 @@ class ODataProcessor {
 
     @BuildStep
     BeanDefiningAnnotationBuildItem registerServiceAnnotation() {
-        return new BeanDefiningAnnotationBuildItem(SERVICE, APPLICATION_SCOPED, false);
+        return new BeanDefiningAnnotationBuildItem(ENTITY_SET, APPLICATION_SCOPED, false);
+    }
+
+    @BuildStep
+    void scanForEntities(BeanArchiveIndexBuildItem beanArchiveIndex,
+                         BuildProducer<EntityTypeBuildItem> buildProducer) {
+
+        IndexView indexView = beanArchiveIndex.getIndex();
+        Collection<AnnotationInstance> entityTypes = indexView.getAnnotations(ENTITY_TYPE);
+
+        entityTypes.forEach(annotationInstance -> {
+            String name = annotationInstance.value().asString();
+            String className = annotationInstance.target().asClass().name().toString();
+
+            buildProducer.produce(new EntityTypeBuildItem(name,
+                    className,
+                    createEntityType(name, annotationInstance.target().asClass())));
+        });
+    }
+
+    @BuildStep
+    void scanForEntitySets(BeanArchiveIndexBuildItem beanArchiveIndex,
+                           BuildProducer<EntitySetBuildItem> buildProducer) {
+
+        IndexView indexView = beanArchiveIndex.getIndex();
+        Collection<AnnotationInstance> integrationCards = indexView.getAnnotations(ENTITY_SET);
+
+        integrationCards.forEach(annotationInstance -> {
+            String name = annotationInstance.value().asString();
+            String className = annotationInstance.target().asClass().name().toString();
+            log.info("EntitySet " + name + " ; " + className);
+
+
+            //    buildProducer.produce(new EntitySetBuildItem(name, className, entitySet));
+        });
     }
 
     @BuildStep
     @Record(ExecutionTime.STATIC_INIT)
-    void scanForServices(ODataServiceRecorder recorder,
+    void scanForServices(ODataServiceRecorder recorder, // TODO
+                         List<EntityTypeBuildItem> entityTypeBuildItems,
                          BeanArchiveIndexBuildItem beanArchiveIndex,
                          BeanContainerBuildItem beanContainer,
-                         BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemProducer) {
+                         BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemProducer
+            , BuildProducer<EntitySetBuildItem> buildProducer) {
 
         Map<String, String> entityTypes = new HashMap<>();
 
@@ -74,12 +114,11 @@ class ODataProcessor {
         for (AnnotationInstance entityType : index.getAnnotations(ENTITY_TYPE)) {
             log.debug("found EntityType " + entityType.target().toString());
             String name = entityType.value().asString();
-            recorder.registerEntityType(beanContainer.getValue(),
-                    name, createEntityType(name, entityType.target().asClass()));
+
             entityTypes.put(entityType.target().toString(), name);
         }
 
-        Collection<AnnotationInstance> services = index.getAnnotations(SERVICE);
+        Collection<AnnotationInstance> services = index.getAnnotations(ENTITY_SET);
 
         for (AnnotationInstance service : services) {
             log.debug("found " + service.target().toString());
@@ -94,7 +133,10 @@ class ODataProcessor {
                     function.setName(functionName);
                     function.setEntitySet(name);
                     // TODO Parameter
-                    recorder.registerFunction(beanContainer.getValue(), functionName, name, function);
+                    recorder.registerFunction(beanContainer.getValue(),
+                            functionName,
+                            name,
+                            function);
                 }
                 if (methodInfo.hasAnnotation(ACTION)) {
                     String actionName = methodInfo.name();
@@ -112,9 +154,11 @@ class ODataProcessor {
                         actionParameter.setName(methodInfo.parameterName(i));
                         actionParameter.setTypeKind(parameter.kind().name());
                         actionParameter.setTypeName(parameter.name().toString());
-                        if (entityTypes.containsKey(parameter.name().toString())) {
+                        Optional<EntityTypeBuildItem> optional =
+                                findEntityType(entityTypeBuildItems, parameter);
+                        if (optional.isPresent()) {
                             actionParameter.setBindingParameter(true);
-                            actionParameter.setEntityType(entityTypes.get(parameter.name().toString()));
+                            actionParameter.setEntityType(optional.get().getName());
                         } else {
                             actionParameter.setEdmType(getEdmType(parameter.name().toString()));
                         }
@@ -128,9 +172,11 @@ class ODataProcessor {
                     Parameter returnParameter = new Parameter();
                     returnParameter.setTypeName(returnType.name().toString());
                     returnParameter.setTypeKind(returnType.kind().name());
-                    if (entityTypes.containsKey(returnType.name().toString())) {
-                        returnParameter.setBindingParameter(true); // TODO is that right?
-                        returnParameter.setEntityType(entityTypes.get(returnType.name().toString()));
+                    Optional<EntityTypeBuildItem> optional =
+                            findEntityType(entityTypeBuildItems, returnType);
+                    if (optional.isPresent()) {
+                        returnParameter.setBindingParameter(true);
+                        returnParameter.setEntityType(optional.get().getName());
                     } else {
                         returnParameter.setEdmType(getEdmType(returnType.name().toString()));
                     }
@@ -139,6 +185,9 @@ class ODataProcessor {
                 }
                 if (methodInfo.hasAnnotation(NAVIGATION_BINDING)) {
                     String actionName = methodInfo.name();
+                    if (actionName.startsWith("get")) {
+                        actionName = actionName.substring(3);
+                    }
                     log.info("found Navigation" + actionName); // TODO Logging
 
                     Action action = new Action();
@@ -157,24 +206,46 @@ class ODataProcessor {
                     Type returnType = methodInfo.returnType();
                     Parameter returnParameter = createParameter(entityTypes, returnType);
                     action.setReturnType(returnParameter);
-                    // recorder.registerAction(beanContainer.getValue(), actionName, name, action);
                     navigationBindings.add(action);
                 }
             });
 
-            recorder.registerEntitySet(beanContainer.getValue(), name,
+            buildProducer.produce(new EntitySetBuildItem(name,
+                    service.value("entityType").asString(),
                     new EntitySet(name, service.value("entityType").asString(),
-                            service.target().asClass().name().toString(), navigationBindings));
+                            service.target().asClass().name().toString(), navigationBindings)));
         }
+    }
+
+
+    @BuildStep
+    @Record(ExecutionTime.STATIC_INIT)
+    void registerElements(List<EntityTypeBuildItem> entityTypeBuildItems,
+                          List<EntitySetBuildItem> entitySetBuildItems,
+                          BeanContainerBuildItem beanContainer, ODataServiceRecorder recorder) {
+
+        entityTypeBuildItems.forEach(entityTypeBuildItem -> {
+            recorder.registerEntityType(beanContainer.getValue(),
+                    entityTypeBuildItem.getName(), entityTypeBuildItem.getEntityType());
+        });
+        entitySetBuildItems.forEach(entitySetBuildItem -> {
+            recorder.registerEntitySet(beanContainer.getValue(), entitySetBuildItem.getName(),
+                    entitySetBuildItem.getEntitySet());
+        });
     }
 
     private Parameter createParameter(Map<String, String> entityTypes, Type parameterType) {
         log.info(parameterType.toString()); // TODO Logging
         Parameter parameter = new Parameter();
 
-        if ("java.util.List".equals(parameterType.name().toString()) && parameterType.kind().equals(Type.Kind.PARAMETERIZED_TYPE)) {
+        if ("java.util.List".equals(parameterType.name().toString()) && parameterType.kind()
+                .equals(Type.Kind.PARAMETERIZED_TYPE)) {
             parameter.setCollection(true);
-            parameter.setTypeName(parameterType.asParameterizedType().arguments().get(0).name().toString());
+            parameter.setTypeName(parameterType.asParameterizedType()
+                    .arguments()
+                    .get(0)
+                    .name()
+                    .toString());
         } else {
             parameter.setTypeName(parameterType.name().toString());
         }
@@ -194,6 +265,8 @@ class ODataProcessor {
         switch (typeName) {
             case "int":
                 return EdmPrimitiveTypeKind.Int32;
+            case "boolean":
+                return EdmPrimitiveTypeKind.Boolean;
             case "java.time.LocalDate":
                 return EdmPrimitiveTypeKind.Date;
             case "java.time.LocalTime":
@@ -214,11 +287,15 @@ class ODataProcessor {
         for (final MethodInfo method : methods) {
 
             if (method.name().length() < 4 ||
-                    (!method.name().startsWith("get") && !method.name().startsWith("set"))) {
-                continue; // TODO consider has and is
+                    (!method.name().startsWith("get") && !method.name()
+                            .startsWith("is") && !method.name()
+                            .startsWith("set"))) {
+                continue;
             }
 
-            propertyName = method.name().substring(3);
+            propertyName =
+                    method.name().startsWith("is") ? method.name().substring(2) : method.name()
+                            .substring(3);
 
             property = propertyMap.computeIfAbsent(propertyName, key -> {
                 EntityProperty p = new EntityProperty();
@@ -226,10 +303,12 @@ class ODataProcessor {
                 return p;
             });
 
-            if (method.name().startsWith("get") && method.parameters().size() == 0) {
+            if ((method.name().startsWith("get") || method.name()
+                    .startsWith("is")) && method.parameters().size() == 0) {
                 Type returnType = method.returnType();
-                log.debug("Prop: " + propertyName + "; Type: " + returnType.toString());
+                log.info("Prop: " + propertyName + "; Type: " + returnType.toString());
                 property.setEdmType(getEdmType(returnType.toString()));
+                property.setGetterName(method.name());
 
             } else if (method.name().startsWith("set") && method.parameters().size() == 1
             ) {
@@ -251,5 +330,13 @@ class ODataProcessor {
             }
         });
         return new EntityType(name, classInfo.name().toString(), propertyMap);
+    }
+
+    private Optional<EntityTypeBuildItem> findEntityType(List<EntityTypeBuildItem> entityTypeBuildItems,
+                                                         Type parameter) {
+        return entityTypeBuildItems.stream()
+                .filter(entityTypeBuildItem -> entityTypeBuildItem.getClassName() == parameter.name()
+                        .toString())
+                .findFirst();
     }
 }

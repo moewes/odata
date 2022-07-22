@@ -3,9 +3,9 @@ package net.moewes.odata.it;
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.annotations.ODataAction;
+import net.moewes.quarkus.odata.annotations.ODataEntitySet;
 import net.moewes.quarkus.odata.annotations.ODataFunction;
 import net.moewes.quarkus.odata.annotations.ODataNavigationBinding;
-import net.moewes.quarkus.odata.annotations.ODataService;
 import org.apache.olingo.server.api.ODataApplicationException;
 
 import java.util.ArrayList;
@@ -13,12 +13,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@ODataService(value = "MyService",entityType = "MyEntity")
-public class MyEntityService implements EntityProvider<MyEntity>, EntityCollectionProvider<MyEntity> {
+@ODataEntitySet(value = "MyService", entityType = "MyEntity")
+public class MyEntityService
+        implements EntityProvider<MyEntity>, EntityCollectionProvider<MyEntity> {
     @Override
     public List<MyEntity> getCollection() {
 
         List<MyEntity> result = new ArrayList<>();
+
+        MyEntity entity = new MyEntity();
+        entity.setId("Id");
+        entity.setName("Entity with id " + entity.getId());
+        result.add(entity);
+
+        MyEntity entity2 = new MyEntity();
+        entity2.setId("E2");
+        entity2.setName("Entity with id " + entity.getId());
+        entity2.setIsActiveEntity(true);
+        entity2.setHasActiveEntity(true);
+        result.add(entity2);
         return result;
     }
 
@@ -47,7 +60,17 @@ public class MyEntityService implements EntityProvider<MyEntity>, EntityCollecti
 
     }
 
-    @ODataNavigationBinding()
+    @ODataNavigationBinding("SiblingEntity")
+    public MyEntity getSiblingEntity(MyEntity entity) {
+        return null;
+    }
+
+    @ODataNavigationBinding("DraftAdministrativData")
+    public DraftAdministrativeData getDraftAdministrativeData(MyEntity entity) {
+        return null;
+    }
+
+    @ODataNavigationBinding("SecondEntity")
     public List<MySecondEntity> getNavigation(MyEntity entity) {
         return null;
     }
@@ -58,7 +81,7 @@ public class MyEntityService implements EntityProvider<MyEntity>, EntityCollecti
     }
 
     @ODataFunction
-    public String myFunction( MyEntity entity) {
+    public String myFunction(MyEntity entity) {
         return "myFunction";
     }
 }

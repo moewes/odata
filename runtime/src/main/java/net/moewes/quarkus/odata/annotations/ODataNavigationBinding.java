@@ -13,5 +13,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Documented
 @Inherited
 public @interface ODataNavigationBinding {
-
+    String value();
 }

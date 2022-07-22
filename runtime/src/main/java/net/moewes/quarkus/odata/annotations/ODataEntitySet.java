@@ -12,7 +12,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Documented
 @Inherited
-public @interface ODataService {
+public @interface ODataEntitySet {
     String value();
 
     String entityType();
