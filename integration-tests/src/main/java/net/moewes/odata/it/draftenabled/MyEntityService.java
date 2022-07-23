@@ -1,5 +1,6 @@
-package net.moewes.odata.it;
+package net.moewes.odata.it.draftenabled;
 
+import net.moewes.odata.it.MySecondEntity;
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.annotations.ODataAction;

@@ -21,6 +21,7 @@ public class MyBasicEnttySet
         entity1.setFlag(true);
         entity1.setNumber(10);
         entity1.setText("FooBar");
+        entity1.setGuid(UUID.fromString("bdc8ffcb-02d7-4a94-93a6-458e35bc7a39"));
         repository.put(entity1.getId(), entity1);
 
         MyBasicEntity entity2 = new MyBasicEntity();

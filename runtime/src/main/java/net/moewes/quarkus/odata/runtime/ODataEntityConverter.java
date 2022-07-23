@@ -1,5 +1,6 @@
 package net.moewes.quarkus.odata.runtime;
 
+import net.moewes.quarkus.odata.repository.DataTypes;
 import net.moewes.quarkus.odata.repository.EntityProperty;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.repository.EntityType;
@@ -12,8 +13,6 @@ import org.apache.olingo.server.api.uri.UriParameter;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
@@ -174,18 +173,6 @@ public class ODataEntityConverter {
     }
 
     private Class getValueClass(EdmPrimitiveTypeKind edmType) {
-        // TODO Refactor bundle that in a central enum for type to edm and vice versa
-        switch (edmType) {
-            case Date:
-                return LocalDate.class;
-            case TimeOfDay:
-                return LocalTime.class;
-            case Int32:
-                return int.class;
-            case Boolean:
-                return boolean.class;
-            default:
-                return String.class;
-        }
+        return DataTypes.getClassForEdmType(edmType);
     }
 }

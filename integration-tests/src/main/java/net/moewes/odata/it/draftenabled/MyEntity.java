@@ -1,4 +1,4 @@
-package net.moewes.odata.it;
+package net.moewes.odata.it.draftenabled;
 
 import lombok.AccessLevel;
 import lombok.Data;

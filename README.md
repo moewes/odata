@@ -4,7 +4,7 @@ Quarkus Odata V4 Extension
 
 ## How to use
 
-Check out the repository and build and install with maven or use github packages.
+Check out the repository and build and install with maven or use GitHub packages.
 
 Maven coordinates:
 
@@ -40,7 +40,7 @@ Mark entity keys with @EntityKey annotation.
 ### Create OData EntitySets
 
 Create a class and annotate it with @ODataEntitySet. Implement at least the interface EntityCollectionProvider<>. For
-CRUD operations on a the single entity implement the EntityProvider<T> interface.
+CRUD operations on a single entity implement the EntityProvider<T> interface.
 
 ````
 @ODataEntitySet(value = "BasicSet", entityType = "BasicEntity")
@@ -74,10 +74,11 @@ bound entity, further parameter are possible (primitive types only, see supporte
 ### Supported Data Types
 
 | Type in Pojo | Mapped Edm Type |
-| --- | --- |
-| String | Edm.String |
-| int | Edm.Int32 |
-| boolean | Edm.Boolean |
+|--------------|-----------------|
+| String       | Edm.String      |
+| int          | Edm.Int32       |
+| boolean      | Edm.Boolean     |
+| UUID         | Edm.Guid        | 
 
 ### Other Features
 
@@ -99,6 +100,7 @@ Batch operations are supported.
 * Renamed @ODataService to @ODataEntitySet
 * support int values
 * support boolean values
+* support UUID values
 
 ### 0.1.0
 

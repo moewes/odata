@@ -188,7 +188,7 @@ class ODataProcessor {
                     if (actionName.startsWith("get")) {
                         actionName = actionName.substring(3);
                     }
-                    log.info("found Navigation" + actionName); // TODO Logging
+                    log.debug("found Navigation" + actionName);
 
                     Action action = new Action();
                     action.setName(actionName);
@@ -235,7 +235,7 @@ class ODataProcessor {
     }
 
     private Parameter createParameter(Map<String, String> entityTypes, Type parameterType) {
-        log.info(parameterType.toString()); // TODO Logging
+        log.debug(parameterType.toString());
         Parameter parameter = new Parameter();
 
         if ("java.util.List".equals(parameterType.name().toString()) && parameterType.kind()
@@ -257,23 +257,12 @@ class ODataProcessor {
         } else {
             parameter.setEdmType(getEdmType(parameter.getTypeName()));
         }
-        log.info("Parameter " + parameter); // TODO Logging
+        log.debug("Parameter " + parameter);
         return parameter;
     }
 
     private EdmPrimitiveTypeKind getEdmType(String typeName) {
-        switch (typeName) {
-            case "int":
-                return EdmPrimitiveTypeKind.Int32;
-            case "boolean":
-                return EdmPrimitiveTypeKind.Boolean;
-            case "java.time.LocalDate":
-                return EdmPrimitiveTypeKind.Date;
-            case "java.time.LocalTime":
-                return EdmPrimitiveTypeKind.TimeOfDay;
-            default:
-                return EdmPrimitiveTypeKind.String;
-        }
+        return DataTypes.getEdmTypeForClassName(typeName);
     }
 
     private EntityType createEntityType(String name, ClassInfo classInfo) {
@@ -335,8 +324,8 @@ class ODataProcessor {
     private Optional<EntityTypeBuildItem> findEntityType(List<EntityTypeBuildItem> entityTypeBuildItems,
                                                          Type parameter) {
         return entityTypeBuildItems.stream()
-                .filter(entityTypeBuildItem -> entityTypeBuildItem.getClassName() == parameter.name()
-                        .toString())
+                .filter(entityTypeBuildItem -> entityTypeBuildItem.getClassName()
+                        .equals(parameter.name().toString()))
                 .findFirst();
     }
 }

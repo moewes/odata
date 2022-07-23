@@ -84,6 +84,7 @@ public class IntegrationTest {
         Assertions.assertEquals(Boolean.TRUE, jsonPath.get("Flag"));
         Assertions.assertEquals(Integer.valueOf(10), jsonPath.get("Number"));
         Assertions.assertEquals("FooBar", jsonPath.get("Text"));
+        Assertions.assertEquals("bdc8ffcb-02d7-4a94-93a6-458e35bc7a39", jsonPath.get("Guid"));
     }
 
     // @Test // FIXME not found behavior
@@ -105,6 +106,7 @@ public class IntegrationTest {
         requestParams.put("Flag", true);
         requestParams.put("Number", 5);
         requestParams.put("Text", "New Element");
+        requestParams.put("Guid", "bdc8ffcb-02d7-4a94-93a6-458e35bc7a39");
 
         given()
                 .when()
