@@ -58,14 +58,14 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
 
         UriResource lastUriPart = context.getLastUriPart();
 
-        EntityCollection entitySet;
+        EntityCollection entityCollection;
         EdmEntitySet edmEntitySet;
         EdmEntityType edmEntityType;
         if (lastUriPart instanceof UriResourceEntitySet) {
             UriResourceEntitySet uriResourceEntitySet = (UriResourceEntitySet) lastUriPart;
             edmEntitySet = uriResourceEntitySet.getEntitySet();
             edmEntityType = edmEntitySet.getEntityType();
-            entitySet = getData(edmEntitySet);
+            entityCollection = getData(edmEntitySet);
         } else if (lastUriPart instanceof UriResourceNavigation) {
             UriResourceNavigation uriResourceNavigation = (UriResourceNavigation) lastUriPart;
             EdmNavigationProperty navigationProperty = uriResourceNavigation.getProperty();
@@ -77,7 +77,7 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                     .getRelatedBindingTarget(navigationProperty.getName());
             edmEntitySet = (EdmEntitySet) relatedBindingTarget;
             edmEntityType = navigationProperty.getType();
-            entitySet = getNavigationData(parentEntitySet.getEntitySet(),
+            entityCollection = getNavigationData(parentEntitySet.getEntitySet(),
                     parentEntitySet.getKeyPredicates(),
                     navigationProperty, edmEntitySet);
         } else {
@@ -86,6 +86,12 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                     Locale.ENGLISH);
         }
 
+        /*
+        context.respondWithEntityCollection(entityCollection,
+                contentType,
+                HttpStatusCode.OK,
+                serviceMetadata);
+        */
         ODataSerializer serializer = odata.createSerializer(contentType);
 
         ContextURL contextURL = ContextURL.with().entitySet(edmEntitySet).build();
@@ -95,7 +101,10 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
         EntityCollectionSerializerOptions options =
                 EntityCollectionSerializerOptions.with().id(id).contextURL(contextURL).build();
         SerializerResult serializerResult =
-                serializer.entityCollection(serviceMetadata, edmEntityType, entitySet, options);
+                serializer.entityCollection(serviceMetadata,
+                        edmEntityType,
+                        entityCollection,
+                        options);
 
         InputStream serializedContent = serializerResult.getContent();
 

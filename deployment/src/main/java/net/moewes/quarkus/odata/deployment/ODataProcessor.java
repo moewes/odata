@@ -91,7 +91,7 @@ class ODataProcessor {
         integrationCards.forEach(annotationInstance -> {
             String name = annotationInstance.value().asString();
             String className = annotationInstance.target().asClass().name().toString();
-            log.info("EntitySet " + name + " ; " + className);
+            log.debug("EntitySet " + name + " ; " + className);
 
 
             //    buildProducer.produce(new EntitySetBuildItem(name, className, entitySet));
@@ -297,7 +297,7 @@ class ODataProcessor {
             if ((method.name().startsWith("get") || method.name()
                     .startsWith("is")) && method.parameters().size() == 0) {
                 Type returnType = method.returnType();
-                log.info("Prop: " + propertyName + "; Type: " + returnType.toString());
+                log.debug("Prop: " + propertyName + "; Type: " + returnType.toString());
                 property.setEdmType(getEdmType(returnType.toString()));
                 property.setGetterName(method.name());
 

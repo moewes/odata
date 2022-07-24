@@ -44,8 +44,7 @@ public class ActionRequestContext extends ODataRequestContext {
     }
 
     // FIXME eleminate odata import parameter
-    public Map<String, Parameter> getActionParameter(ContentType importContentType,
-                                                     OData odata)
+    public Map<String, Parameter> getActionParameter(ContentType importContentType)
             throws DeserializerException {
 
         ODataDeserializer deserializer = odata.createDeserializer(importContentType);

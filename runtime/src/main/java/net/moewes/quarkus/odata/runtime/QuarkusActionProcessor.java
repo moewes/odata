@@ -18,7 +18,6 @@ import org.apache.olingo.server.api.processor.ActionEntityCollectionProcessor;
 import org.apache.olingo.server.api.processor.ActionEntityProcessor;
 import org.apache.olingo.server.api.processor.ActionPrimitiveCollectionProcessor;
 import org.apache.olingo.server.api.processor.ActionPrimitiveProcessor;
-import org.apache.olingo.server.api.serializer.SerializerException;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriParameter;
 
@@ -51,26 +50,21 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                        UriInfo uriInfo,
                                        ContentType importContentType,
                                        ContentType exportContentType)
-            throws ODataApplicationException {
+            throws ODataApplicationException, ODataLibraryException {
 
         ActionRequestContext context = new ActionRequestContext(odata, oDataRequest, oDataResponse,
                 uriInfo);
 
-        try {
-            Object result = processAction(importContentType, context);
+        Object result = processAction(importContentType, context);
 
-            Property property =
-                    new Property(null, "result", ValueType.PRIMITIVE, result);
+        Property property =
+                new Property(null, "result", ValueType.PRIMITIVE, result);
 
-            context.respondWithPrimitive(property,
-                    (EdmPrimitiveType) context.getEdmReturnType().getType(),
-                    exportContentType,
-                    HttpStatusCode.OK,
-                    serviceMetadata);
-
-        } catch (SerializerException | DeserializerException e) {
-            throw new ODataRuntimeException(e);
-        }
+        context.respondWithPrimitive(property,
+                (EdmPrimitiveType) context.getEdmReturnType().getType(),
+                exportContentType,
+                HttpStatusCode.OK,
+                serviceMetadata);
     }
 
     @Override
@@ -79,36 +73,31 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                               UriInfo uriInfo,
                                               ContentType importContentType,
                                               ContentType exportContentType)
-            throws ODataApplicationException {
+            throws ODataApplicationException, ODataLibraryException {
 
         ActionRequestContext context = new ActionRequestContext(odata, oDataRequest, oDataResponse,
                 uriInfo);
 
-        try {
-            Object result = processAction(importContentType, context);
+        Object result = processAction(importContentType, context);
 
-            EntityCollection collection = new EntityCollection();
+        EntityCollection collection = new EntityCollection();
 
-            EdmType edmType = context.getEdmReturnType().getType();
-            if (result instanceof Collection) {
-                ((Collection<?>) result).forEach(data -> {
-                    Entity entity = new Entity();
-                    odataEntityConverter.convertDataToFrameworkEntity(entity,
-                            repository.findEntityType(edmType.getName())
-                                    .orElseThrow(),
-                            data);
-                    collection.getEntities().add(entity);
-                });
-            }
-
-            context.respondWithEntityCollection(collection,
-                    exportContentType,
-                    HttpStatusCode.OK,
-                    serviceMetadata);
-
-        } catch (SerializerException | DeserializerException e) {
-            throw new ODataRuntimeException(e);
+        EdmType edmType = context.getEdmReturnType().getType();
+        if (result instanceof Collection) {
+            ((Collection<?>) result).forEach(data -> {
+                Entity entity = new Entity();
+                odataEntityConverter.convertDataToFrameworkEntity(entity,
+                        repository.findEntityType(edmType.getName())
+                                .orElseThrow(),
+                        data);
+                collection.getEntities().add(entity);
+            });
         }
+
+        context.respondWithEntityCollection(collection,
+                exportContentType,
+                HttpStatusCode.OK,
+                serviceMetadata);
     }
 
     @Override
@@ -117,29 +106,24 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                     UriInfo uriInfo,
                                     ContentType importContentType,
                                     ContentType exportContentType)
-            throws ODataApplicationException {
+            throws ODataApplicationException, ODataLibraryException {
 
         ActionRequestContext context = new ActionRequestContext(odata, oDataRequest, oDataResponse,
                 uriInfo);
-        try {
-            Object result = processAction(importContentType, context);
 
-            EdmType edmType = context.getEdmReturnType().getType();
-            Entity entity = new Entity();
-            odataEntityConverter.convertDataToFrameworkEntity(entity,
-                    repository.findEntityType(edmType.getName()).orElseThrow(),
-                    result);
+        Object result = processAction(importContentType, context);
 
-            context.respondWithEntity(entity,
-                    exportContentType,
-                    HttpStatusCode.OK,
-                    serviceMetadata);
+        EdmType edmType = context.getEdmReturnType().getType();
+        Entity entity = new Entity();
+        odataEntityConverter.convertDataToFrameworkEntity(entity,
+                repository.findEntityType(edmType.getName()).orElseThrow(),
+                result);
 
-        } catch (SerializerException | DeserializerException e) {
-            throw new ODataRuntimeException(e);
-        }
+        context.respondWithEntity(entity,
+                exportContentType,
+                HttpStatusCode.OK,
+                serviceMetadata);
     }
-
 
     @Override
     public void processActionPrimitiveCollection(ODataRequest oDataRequest,
@@ -147,26 +131,21 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                                  UriInfo uriInfo,
                                                  ContentType importContentType,
                                                  ContentType exportContentType)
-            throws ODataApplicationException {
+            throws ODataApplicationException, ODataLibraryException {
 
         ActionRequestContext context = new ActionRequestContext(odata, oDataRequest, oDataResponse,
                 uriInfo);
 
-        try {
-            Object result = processAction(importContentType, context);
+        Object result = processAction(importContentType, context);
 
-            Property property =
-                    new Property(null, "result", ValueType.COLLECTION_PRIMITIVE, result);
+        Property property =
+                new Property(null, "result", ValueType.COLLECTION_PRIMITIVE, result);
 
-            context.respondWithPrimitiveCollection(property,
-                    (EdmPrimitiveType) context.getEdmReturnType().getType(),
-                    exportContentType,
-                    HttpStatusCode.OK,
-                    serviceMetadata);
-
-        } catch (SerializerException | DeserializerException e) {
-            throw new ODataRuntimeException(e);
-        }
+        context.respondWithPrimitiveCollection(property,
+                (EdmPrimitiveType) context.getEdmReturnType().getType(),
+                exportContentType,
+                HttpStatusCode.OK,
+                serviceMetadata);
     }
 
     private Object processAction(ContentType importContentType, ActionRequestContext context)
@@ -189,7 +168,7 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
         }
 
         return callAction(context, action, serviceBean, boundEntityData,
-                context.getActionParameter(importContentType, odata));
+                context.getActionParameter(importContentType));
     }
 
     private Object getServiceBeanForEntitySet(ActionRequestContext context) {

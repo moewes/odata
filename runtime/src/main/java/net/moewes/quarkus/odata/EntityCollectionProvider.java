@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface EntityCollectionProvider<T> {
 
-    public List<T> getCollection();
+    List<T> getCollection();
 }
