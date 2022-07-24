@@ -122,6 +122,25 @@ public class ODataRequestContext {
         response.setHeader(HttpHeader.CONTENT_TYPE, contentType.toContentTypeString());
     }
 
+    public void respondWithPrimitiveCollection(Property property,
+                                               EdmPrimitiveType edmPropertyType,
+                                               ContentType contentType,
+                                               HttpStatusCode statusCode,
+                                               ServiceMetadata serviceMetadata)
+            throws SerializerException {
+
+        ContextURL contextURL = ContextURL.with().entitySet(getEntitySet()).build();
+        PrimitiveSerializerOptions options =
+                PrimitiveSerializerOptions.with().contextURL(contextURL).build();
+        ODataSerializer serializer = odata.createSerializer(contentType);
+        SerializerResult serializerResult = serializer.primitiveCollection(serviceMetadata,
+                edmPropertyType, property, options);
+
+        response.setContent(serializerResult.getContent());
+        response.setStatusCode(statusCode.getStatusCode());
+        response.setHeader(HttpHeader.CONTENT_TYPE, contentType.toContentTypeString());
+    }
+
     private UriResourceEntitySet getUriResourceEntitySet(int level) {
         List<UriResource> resourcePaths = uriInfo.getUriResourceParts();
         return (UriResourceEntitySet) resourcePaths.get(level);

@@ -177,7 +177,7 @@ public class IntegrationTest {
         Assertions.assertEquals(2, list.size());
     }
 
-    //@Test
+    @Test
     public void testActionReturningListOfString() {
         JSONObject requestParams = new JSONObject();
         requestParams.put("parameter", 2);
@@ -190,16 +190,10 @@ public class IntegrationTest {
 
         response
                 .then()
-                .statusCode(500);
-        /* // FIXME
-        JsonPath jsonPath = response.jsonPath();
+                .statusCode(200);
+        JsonPath jsonPath = response.jsonPath().using(new JsonPathConfig());
 
-        Assertions.assertEquals("E1", jsonPath.get("Id"));
-        Assertions.assertEquals(Boolean.TRUE, jsonPath.get("Flag"));
-        Assertions.assertEquals(Integer.valueOf(10), jsonPath.get("Number"));
-        Assertions.assertEquals("abc", jsonPath.get("Text"));
-        Assertions.assertEquals("bdc8ffcb-02d7-4a94-93a6-458e35bc7a39", jsonPath.get("Guid"));
-
-         */
+        List<Object> list = jsonPath.getList("value");
+        Assertions.assertEquals(2, list.size());
     }
 }
