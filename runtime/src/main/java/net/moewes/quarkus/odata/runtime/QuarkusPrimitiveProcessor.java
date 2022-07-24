@@ -1,5 +1,6 @@
 package net.moewes.quarkus.odata.runtime;
 
+import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.Property;
 import org.apache.olingo.commons.api.data.ValueType;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveType;
@@ -34,7 +35,11 @@ public class QuarkusPrimitiveProcessor implements PrimitiveProcessor {
     }
 
     @Override
-    public void readPrimitive(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo, ContentType contentType) throws ODataApplicationException, ODataLibraryException {
+    public void readPrimitive(ODataRequest oDataRequest,
+                              ODataResponse oDataResponse,
+                              UriInfo uriInfo,
+                              ContentType contentType)
+            throws ODataApplicationException, ODataLibraryException {
 
         ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
 
@@ -48,7 +53,9 @@ public class QuarkusPrimitiveProcessor implements PrimitiveProcessor {
             case navigationProperty:
                 break;
             default:
-                throw new ODataApplicationException("Not supported", HttpStatusCode.BAD_REQUEST.getStatusCode(), Locale.ENGLISH);
+                throw new ODataApplicationException("Not supported",
+                        HttpStatusCode.BAD_REQUEST.getStatusCode(),
+                        Locale.ENGLISH);
         }
 
         UriResourceProperty uriProperty = (UriResourceProperty) lastUriPart;
@@ -58,16 +65,29 @@ public class QuarkusPrimitiveProcessor implements PrimitiveProcessor {
         Property property = new Property();
         property.setValue(ValueType.PRIMITIVE, String.valueOf("Test"));
 
-        context.respondWithPrimitive(property, edmPropertyType, contentType, HttpStatusCode.OK, odata, serviceMetadata);
+        context.respondWithPrimitive(property,
+                edmPropertyType,
+                contentType,
+                HttpStatusCode.OK,
+                odata,
+                serviceMetadata);
     }
 
     @Override
-    public void updatePrimitive(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo, ContentType contentType, ContentType contentType1) throws ODataApplicationException, ODataLibraryException {
+    public void updatePrimitive(ODataRequest oDataRequest,
+                                ODataResponse oDataResponse,
+                                UriInfo uriInfo,
+                                ContentType contentType,
+                                ContentType contentType1)
+            throws ODataApplicationException, ODataLibraryException {
 
     }
 
     @Override
-    public void deletePrimitive(ODataRequest oDataRequest, ODataResponse oDataResponse, UriInfo uriInfo) throws ODataApplicationException, ODataLibraryException {
+    public void deletePrimitive(ODataRequest oDataRequest,
+                                ODataResponse oDataResponse,
+                                UriInfo uriInfo)
+            throws ODataApplicationException, ODataLibraryException {
 
     }
 

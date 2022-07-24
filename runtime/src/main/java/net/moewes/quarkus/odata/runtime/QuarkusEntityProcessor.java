@@ -2,6 +2,7 @@ package net.moewes.quarkus.odata.runtime;
 
 import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.repository.EntitySet;
+import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.format.ContentType;
@@ -17,7 +18,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class QuarkusEntityProcessor implements org.apache.olingo.server.api.processor.EntityProcessor {
+public class QuarkusEntityProcessor
+        implements org.apache.olingo.server.api.processor.EntityProcessor {
 
     private final EdmRepository repository;
     private final ODataEntityConverter odataEntityConverter;

@@ -4,6 +4,7 @@ import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.repository.Action;
 import net.moewes.quarkus.odata.repository.EntitySet;
+import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.ContextURL;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
@@ -186,7 +187,8 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                                 collection.getEntities().add(entity);
                             });
                         }
-                    } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException | ODataApplicationException e) {
+                    } catch (IllegalAccessException | InvocationTargetException |
+                             NoSuchMethodException | ODataApplicationException e) {
                         e.printStackTrace(); // FIXME
                     }
                 });

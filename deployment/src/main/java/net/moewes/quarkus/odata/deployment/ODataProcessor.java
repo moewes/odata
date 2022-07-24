@@ -10,10 +10,10 @@ import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.undertow.deployment.ServletBuildItem;
 import net.moewes.quarkus.odata.annotations.*;
 import net.moewes.quarkus.odata.repository.*;
-import net.moewes.quarkus.odata.runtime.CsdlBuilder;
-import net.moewes.quarkus.odata.runtime.EdmRepository;
 import net.moewes.quarkus.odata.runtime.ODataServiceRecorder;
 import net.moewes.quarkus.odata.runtime.ODataServlet;
+import net.moewes.quarkus.odata.runtime.edm.CsdlBuilder;
+import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.jboss.jandex.*;
 import org.jboss.logging.Logger;
@@ -152,7 +152,7 @@ class ODataProcessor {
                         Parameter actionParameter = new Parameter();
 
                         actionParameter.setName(methodInfo.parameterName(i));
-                        actionParameter.setTypeKind(parameter.kind().name());
+                        actionParameter.setTypeKind(getDataTypeKind(parameter.kind()));
                         actionParameter.setTypeName(parameter.name().toString());
                         Optional<EntityTypeBuildItem> optional =
                                 findEntityType(entityTypeBuildItems, parameter);
@@ -169,17 +169,20 @@ class ODataProcessor {
                     action.setParameter(actionParameters);
 
                     Type returnType = methodInfo.returnType();
-                    Parameter returnParameter = new Parameter();
-                    returnParameter.setTypeName(returnType.name().toString());
-                    returnParameter.setTypeKind(returnType.kind().name());
-                    Optional<EntityTypeBuildItem> optional =
-                            findEntityType(entityTypeBuildItems, returnType);
-                    if (optional.isPresent()) {
-                        returnParameter.setBindingParameter(true);
-                        returnParameter.setEntityType(optional.get().getName());
-                    } else {
-                        returnParameter.setEdmType(getEdmType(returnType.name().toString()));
-                    }
+
+                    Parameter returnParameter = createParameter(entityTypes, returnType);
+
+                    //Parameter returnParameter = new Parameter();
+                    //returnParameter.setTypeName(returnType.name().toString());
+                    //returnParameter.setTypeKind(getDataTypeKind(returnType.kind()));
+                    //Optional<EntityTypeBuildItem> optional =
+                    //        findEntityType(entityTypeBuildItems, returnType);
+                    //if (optional.isPresent()) {
+                    //    returnParameter.setBindingParameter(true); // TODO is that right
+                    //    returnParameter.setEntityType(optional.get().getName());
+                    //} else {
+                    //    returnParameter.setEdmType(getEdmType(returnType.name().toString()));
+                    //}
                     action.setReturnType(returnParameter);
                     recorder.registerAction(beanContainer.getValue(), actionName, name, action);
                 }
@@ -217,7 +220,6 @@ class ODataProcessor {
         }
     }
 
-
     @BuildStep
     @Record(ExecutionTime.STATIC_INIT)
     void registerElements(List<EntityTypeBuildItem> entityTypeBuildItems,
@@ -249,7 +251,7 @@ class ODataProcessor {
         } else {
             parameter.setTypeName(parameterType.name().toString());
         }
-        parameter.setTypeKind(parameterType.kind().name());
+        parameter.setTypeKind(getDataTypeKind(parameterType.kind()));
 
         if (entityTypes.containsKey(parameter.getTypeName())) {
             parameter.setBindingParameter(true);
@@ -327,5 +329,17 @@ class ODataProcessor {
                 .filter(entityTypeBuildItem -> entityTypeBuildItem.getClassName()
                         .equals(parameter.name().toString()))
                 .findFirst();
+    }
+
+    private DataTypeKind getDataTypeKind(Type.Kind kind) {
+
+        switch (kind) {
+            case CLASS:
+                return DataTypeKind.CLASS;
+            case PRIMITIVE:
+                return DataTypeKind.PRIMITIVE;
+            default:
+                return DataTypeKind.UNSUPPORTED;
+        }
     }
 }

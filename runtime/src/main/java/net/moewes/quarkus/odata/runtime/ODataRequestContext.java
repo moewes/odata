@@ -27,7 +27,7 @@ import java.util.List;
 
 public class ODataRequestContext {
 
-    private final ODataRequest request;
+    protected final ODataRequest request;
     private final ODataResponse response;
     private final UriInfo uriInfo;
 
@@ -51,7 +51,8 @@ public class ODataRequestContext {
         return uriResourceEntitySet.getEntitySet();
     }
 
-    public Entity getEntityFromRequest(OData odata, ContentType requestFormat) throws DeserializerException {
+    public Entity getEntityFromRequest(OData odata, ContentType requestFormat)
+            throws DeserializerException {
         InputStream inputStream = request.getBody();
         ODataDeserializer deserializer = odata.createDeserializer(requestFormat);
         DeserializerResult result = deserializer.entity(inputStream,
@@ -80,8 +81,11 @@ public class ODataRequestContext {
         response.setHeader(HttpHeader.CONTENT_TYPE, contentType.toContentTypeString());
     }
 
-    public void respondWithPrimitive(Property property, EdmPrimitiveType edmPropertyType, ContentType contentType,
-                                     HttpStatusCode statusCode, OData odata,
+    public void respondWithPrimitive(Property property,
+                                     EdmPrimitiveType edmPropertyType,
+                                     ContentType contentType,
+                                     HttpStatusCode statusCode,
+                                     OData odata,
                                      ServiceMetadata serviceMetadata) throws SerializerException {
 
         ContextURL contextURL = ContextURL.with().entitySet(getEntitySet()).build();

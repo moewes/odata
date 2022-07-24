@@ -2,6 +2,7 @@ package net.moewes.odata.it.basic;
 
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.EntityProvider;
+import net.moewes.quarkus.odata.annotations.ODataAction;
 import net.moewes.quarkus.odata.annotations.ODataEntitySet;
 import org.apache.olingo.server.api.ODataApplicationException;
 
@@ -9,7 +10,7 @@ import javax.annotation.PostConstruct;
 import java.util.*;
 
 @ODataEntitySet(value = "BasicSet", entityType = "BasicEntity")
-public class MyBasicEnttySet
+public class MyBasicEntitySet
         implements EntityCollectionProvider<MyBasicEntity>, EntityProvider<MyBasicEntity> {
 
     private final Map<String, MyBasicEntity> repository = new HashMap<>();
@@ -58,5 +59,36 @@ public class MyBasicEnttySet
     @Override
     public void delete(Map<String, String> keys) {
 
+    }
+
+    @ODataAction
+    public String actionReturningStringValue(MyBasicEntity entity, String parameter) {
+        return "action on entity with id " + entity.getId() + " with parameter " + parameter;
+    }
+
+    @ODataAction
+    public MyBasicEntity actionReturningEntityType(MyBasicEntity entity, String parameter) {
+        entity.setText(parameter);
+        return entity;
+    }
+
+    @ODataAction
+    public List<MyBasicEntity> actionReturningList(MyBasicEntity entity, int parameter) {
+        List<MyBasicEntity> result = new ArrayList<>();
+
+        for (int i = 0; i < parameter; i++) {
+            result.add(entity);
+        }
+        return result;
+    }
+
+    @ODataAction
+    public List<String> actionReturningListOfString(MyBasicEntity entity, int parameter) {
+        List<String> result = new ArrayList<>();
+
+        for (int i = 0; i < parameter; i++) {
+            result.add(entity.getText());
+        }
+        return result;
     }
 }

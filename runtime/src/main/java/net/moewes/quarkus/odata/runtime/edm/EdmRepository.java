@@ -1,4 +1,4 @@
-package net.moewes.quarkus.odata.runtime;
+package net.moewes.quarkus.odata.runtime.edm;
 
 import net.moewes.quarkus.odata.repository.Action;
 import net.moewes.quarkus.odata.repository.EntitySet;
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class EdmRepository {
-    
+
     private final Map<String, EntityType> entities = new HashMap<>();
     private final Map<String, EntitySet> entitySets = new HashMap<>();
     private final Map<String, Action> actions = new HashMap<>();

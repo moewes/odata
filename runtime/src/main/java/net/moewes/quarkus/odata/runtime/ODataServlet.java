@@ -1,5 +1,8 @@
 package net.moewes.quarkus.odata.runtime;
 
+import net.moewes.quarkus.odata.runtime.edm.CsdlBuilder;
+import net.moewes.quarkus.odata.runtime.edm.EdmProvider;
+import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.server.api.OData;
 import org.apache.olingo.server.api.ODataHttpHandler;
 import org.apache.olingo.server.api.ServiceMetadata;

@@ -10,7 +10,7 @@ public class Parameter {
 
     private String name;
     private String typeName;
-    private String typeKind;
+    private DataTypeKind typeKind;
     private boolean bindingParameter;
     private String entityType;
     private EdmPrimitiveTypeKind edmType;

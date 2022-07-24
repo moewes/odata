@@ -6,11 +6,14 @@ import net.moewes.quarkus.odata.repository.Action;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.repository.EntityType;
 import net.moewes.quarkus.odata.repository.Function;
+import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 
 @Recorder
 public class ODataServiceRecorder {
 
-    public void registerEntityType(BeanContainer beanContainer, String name, EntityType entityType) {
+    public void registerEntityType(BeanContainer beanContainer,
+                                   String name,
+                                   EntityType entityType) {
         EdmRepository repository = beanContainer.instance(EdmRepository.class);
         repository.registerEntity(name, entityType);
     }
@@ -20,12 +23,18 @@ public class ODataServiceRecorder {
         repository.registerEntitySet(name, entitySet);
     }
 
-    public void registerAction(BeanContainer beanContainer, String name, String entitySet, Action action) {
+    public void registerAction(BeanContainer beanContainer,
+                               String name,
+                               String entitySet,
+                               Action action) {
         EdmRepository repository = beanContainer.instance(EdmRepository.class);
         repository.registerAction(name, entitySet, action);
     }
 
-    public void registerFunction(BeanContainer beanContainer, String name, String entitySetName, Function function) {
+    public void registerFunction(BeanContainer beanContainer,
+                                 String name,
+                                 String entitySetName,
+                                 Function function) {
         EdmRepository repository = beanContainer.instance(EdmRepository.class);
         repository.registerFunction(name, entitySetName, function);
     }

@@ -1,11 +1,9 @@
-package net.moewes.quarkus.odata.runtime;
+package net.moewes.quarkus.odata.runtime.edm;
 
-import net.moewes.quarkus.odata.repository.Action;
-import net.moewes.quarkus.odata.repository.EntityProperty;
-import net.moewes.quarkus.odata.repository.EntitySet;
-import net.moewes.quarkus.odata.repository.EntityType;
+import net.moewes.quarkus.odata.repository.*;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.apache.olingo.commons.api.edm.provider.*;
+import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -39,12 +37,10 @@ public class CsdlBuilder {
             navigationPropertyBindings.add(csdlNavigationPropertyBinding);
         });
 
-        CsdlEntitySet csdlEntitySet = new CsdlEntitySet()
+        return new CsdlEntitySet()
                 .setName(entitySet.getName())
                 .setType(new FullQualifiedName(NAMESPACE, entitySet.getEntityType()))
                 .setNavigationPropertyBindings(navigationPropertyBindings);
-
-        return csdlEntitySet;
     }
 
     public Optional<CsdlEntityType> findCsdlForEntityType(FullQualifiedName entityTypeName) {
@@ -121,9 +117,21 @@ public class CsdlBuilder {
 
             csdlAction.setParameters(parameters);
 
-            csdlAction.setReturnType(new CsdlReturnType().setType(action.getReturnType()
-                    .getEdmType()
-                    .getFullQualifiedName()).setCollection(false));
+            Parameter returnType = action.getReturnType();
+
+            FullQualifiedName returnTypeFQN;
+            if (returnType.getEdmType() != null) {
+                returnTypeFQN = returnType.getEdmType().getFullQualifiedName();
+            } else {
+                EntityType entityType =
+                        edmRepository.findEntityType(returnType.getEntityType())
+                                .orElseThrow(() -> new ODataRuntimeException(
+                                        "" + returnType.getEntityType() + " is not a EntityType"));
+                returnTypeFQN = new FullQualifiedName(NAMESPACE, entityType.getName());
+            }
+            csdlAction.setReturnType(new CsdlReturnType()
+                    .setType(returnTypeFQN)
+                    .setCollection(returnType.isCollection()));
         }
         return Optional.ofNullable(csdlAction);
     }

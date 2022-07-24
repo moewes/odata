@@ -4,6 +4,7 @@ import net.moewes.quarkus.odata.repository.DataTypes;
 import net.moewes.quarkus.odata.repository.EntityProperty;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.repository.EntityType;
+import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.Property;
 import org.apache.olingo.commons.api.data.ValueType;
