@@ -131,4 +131,80 @@ public class IntegrationTest {
                 .body(stringContainsInOrder("value", "action on entity with id E1 with " +
                         "parameter abc"));
     }
+
+    @Test
+    public void testActionReturningEntityType() {
+        JSONObject requestParams = new JSONObject();
+        requestParams.put("parameter", "abc");
+
+        Response response = given()
+                .when()
+                .header("Content-Type", "application/json")
+                .body(requestParams.toJSONString())
+                .post("/odata/BasicSet('E1')/Quarkus.OData.actionReturningEntityType");
+
+        response
+                .then()
+                .statusCode(200);
+
+        JsonPath jsonPath = response.jsonPath();
+
+        Assertions.assertEquals("E1", jsonPath.get("Id"));
+        Assertions.assertEquals(Boolean.TRUE, jsonPath.get("Flag"));
+        Assertions.assertEquals(Integer.valueOf(10), jsonPath.get("Number"));
+        Assertions.assertEquals("abc", jsonPath.get("Text"));
+        Assertions.assertEquals("bdc8ffcb-02d7-4a94-93a6-458e35bc7a39", jsonPath.get("Guid"));
+    }
+
+    @Test
+    public void testActionReturningList() {
+        JSONObject requestParams = new JSONObject();
+        requestParams.put("parameter", "abc");
+
+        Response response = given()
+                .when()
+                .header("Content-Type", "application/json")
+                .body(requestParams.toJSONString())
+                .post("/odata/BasicSet('E1')/Quarkus.OData.actionReturningList");
+
+        response
+                .then()
+                .statusCode(500);
+        /* // FIXME
+        JsonPath jsonPath = response.jsonPath();
+
+        Assertions.assertEquals("E1", jsonPath.get("Id"));
+        Assertions.assertEquals(Boolean.TRUE, jsonPath.get("Flag"));
+        Assertions.assertEquals(Integer.valueOf(10), jsonPath.get("Number"));
+        Assertions.assertEquals("abc", jsonPath.get("Text"));
+        Assertions.assertEquals("bdc8ffcb-02d7-4a94-93a6-458e35bc7a39", jsonPath.get("Guid"));
+
+         */
+    }
+
+    @Test
+    public void testActionReturningListOfString() {
+        JSONObject requestParams = new JSONObject();
+        requestParams.put("parameter", "abc");
+
+        Response response = given()
+                .when()
+                .header("Content-Type", "application/json")
+                .body(requestParams.toJSONString())
+                .post("/odata/BasicSet('E1')/Quarkus.OData.actionReturningListOfString");
+
+        response
+                .then()
+                .statusCode(500);
+        /* // FIXME
+        JsonPath jsonPath = response.jsonPath();
+
+        Assertions.assertEquals("E1", jsonPath.get("Id"));
+        Assertions.assertEquals(Boolean.TRUE, jsonPath.get("Flag"));
+        Assertions.assertEquals(Integer.valueOf(10), jsonPath.get("Number"));
+        Assertions.assertEquals("abc", jsonPath.get("Text"));
+        Assertions.assertEquals("bdc8ffcb-02d7-4a94-93a6-458e35bc7a39", jsonPath.get("Guid"));
+
+         */
+    }
 }

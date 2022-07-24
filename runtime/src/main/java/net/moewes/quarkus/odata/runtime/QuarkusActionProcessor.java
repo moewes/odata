@@ -208,6 +208,31 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
 
         ActionRequestContext context = new ActionRequestContext(oDataRequest, oDataResponse,
                 uriInfo);
+
+        try {
+            Object result = processAction(importContentType, context);
+
+            Entity entity = new Entity();
+            odataEntityConverter.convertDataToFrameworkEntity(entity,
+                    getEntitySet(context),
+                    result);
+
+            context.respondWithNoContent();
+            if (1 != 1) {
+                throw new SerializerException(null, null);
+            }
+            /* // FIXME
+            context.respondWithEntity(entity,
+                    exportContentType,
+                    HttpStatusCode.OK,
+                    odata,
+                    serviceMetadata);
+
+             */
+
+        } catch (SerializerException | DeserializerException e) {
+            throw new ODataRuntimeException(e);
+        }
     }
 
     private Object processAction(ContentType importContentType, ActionRequestContext context)
