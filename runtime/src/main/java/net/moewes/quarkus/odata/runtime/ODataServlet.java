@@ -13,7 +13,6 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
@@ -26,20 +25,26 @@ public class ODataServlet extends HttpServlet {
     @Inject
     CsdlBuilder csdlBuilder;
 
-    @Override
-    protected void service(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
+    private ODataHttpHandler handler;
 
-        Logger.getLogger("req").info(req.getMethod() + " " + req.getPathInfo());
+    @Override
+    public void init() throws ServletException {
+        super.init();
         OData odata = OData.newInstance();
         ServiceMetadata edm = odata.createServiceMetadata(new EdmProvider(repository, csdlBuilder),
                 new ArrayList<>());
-        ODataHttpHandler handler = odata.createHandler(edm);
+        handler = odata.createHandler(edm);
         handler.register(new QuarkusEntityCollectionProcessor(repository));
         handler.register(new QuarkusEntityProcessor(repository));
         handler.register(new QuarkusPrimitiveProcessor(repository));
         handler.register(new QuarkusActionProcessor(repository));
         handler.register(new QuarkusBatchProcessor());
+    }
+
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) {
+
+        Logger.getLogger("OData request").info(req.getMethod() + " " + req.getPathInfo());
         handler.process(req, resp);
     }
 }
