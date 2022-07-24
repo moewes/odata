@@ -41,7 +41,8 @@ public class QuarkusPrimitiveProcessor implements PrimitiveProcessor {
                               ContentType contentType)
             throws ODataApplicationException, ODataLibraryException {
 
-        ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
+        ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
+                oDataResponse, uriInfo);
 
         UriResource lastUriPart = context.getLastUriPart();
 
@@ -69,7 +70,6 @@ public class QuarkusPrimitiveProcessor implements PrimitiveProcessor {
                 edmPropertyType,
                 contentType,
                 HttpStatusCode.OK,
-                odata,
                 serviceMetadata);
     }
 

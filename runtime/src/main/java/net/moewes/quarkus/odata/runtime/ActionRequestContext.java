@@ -20,10 +20,11 @@ public class ActionRequestContext extends ODataRequestContext {
 
     private final EdmAction edmAction;
 
-    public ActionRequestContext(ODataRequest oDataRequest,
+    public ActionRequestContext(OData odata,
+                                ODataRequest oDataRequest,
                                 ODataResponse oDataResponse,
                                 UriInfo uriInfo) {
-        super(oDataRequest, oDataResponse, uriInfo);
+        super(odata, oDataRequest, oDataResponse, uriInfo);
 
         UriResource lastUriPart = getLastUriPart();
 

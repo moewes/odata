@@ -2,6 +2,7 @@ package net.moewes.quarkus.odata.runtime;
 
 import org.apache.olingo.commons.api.data.ContextURL;
 import org.apache.olingo.commons.api.data.Entity;
+import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.data.Property;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveType;
@@ -28,13 +29,17 @@ import java.util.List;
 public class ODataRequestContext {
 
     protected final ODataRequest request;
+
+    protected final OData odata;
     private final ODataResponse response;
     private final UriInfo uriInfo;
 
-    public ODataRequestContext(ODataRequest oDataRequest, ODataResponse oDataResponse,
+    public ODataRequestContext(OData odata, ODataRequest oDataRequest,
+                               ODataResponse oDataResponse,
                                UriInfo uriInfo) {
 
         this.request = oDataRequest;
+        this.odata = odata;
         this.response = oDataResponse;
         this.uriInfo = uriInfo;
     }
@@ -51,7 +56,7 @@ public class ODataRequestContext {
         return uriResourceEntitySet.getEntitySet();
     }
 
-    public Entity getEntityFromRequest(OData odata, ContentType requestFormat)
+    public Entity getEntityFromRequest(ContentType requestFormat)
             throws DeserializerException {
         InputStream inputStream = request.getBody();
         ODataDeserializer deserializer = odata.createDeserializer(requestFormat);
@@ -66,7 +71,7 @@ public class ODataRequestContext {
     }
 
     public void respondWithEntity(Entity entity, ContentType contentType,
-                                  HttpStatusCode statusCode, OData odata,
+                                  HttpStatusCode statusCode,
                                   ServiceMetadata serviceMetadata) throws SerializerException {
 
         ContextURL contextURL = ContextURL.with().entitySet(getEntitySet()).build();
@@ -81,11 +86,28 @@ public class ODataRequestContext {
         response.setHeader(HttpHeader.CONTENT_TYPE, contentType.toContentTypeString());
     }
 
+    public void respondWithEntityCollection(EntityCollection entityCollection,
+                                            ContentType contentType,
+                                            HttpStatusCode statusCode,
+                                            ServiceMetadata serviceMetadata)
+            throws SerializerException {
+
+        ContextURL contextURL = ContextURL.with().entitySet(getEntitySet()).build();
+        EntityCollectionSerializerOptions options =
+                EntityCollectionSerializerOptions.with().contextURL(contextURL).build();
+        ODataSerializer serializer = odata.createSerializer(contentType);
+        SerializerResult serializerResult = serializer.entityCollection(serviceMetadata,
+                getEntitySet().getEntityType(), entityCollection, options);
+
+        response.setContent(serializerResult.getContent());
+        response.setStatusCode(statusCode.getStatusCode());
+        response.setHeader(HttpHeader.CONTENT_TYPE, contentType.toContentTypeString());
+    }
+
     public void respondWithPrimitive(Property property,
                                      EdmPrimitiveType edmPropertyType,
                                      ContentType contentType,
                                      HttpStatusCode statusCode,
-                                     OData odata,
                                      ServiceMetadata serviceMetadata) throws SerializerException {
 
         ContextURL contextURL = ContextURL.with().entitySet(getEntitySet()).build();

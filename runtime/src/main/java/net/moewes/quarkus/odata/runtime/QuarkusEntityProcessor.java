@@ -42,11 +42,12 @@ public class QuarkusEntityProcessor
                            UriInfo uriInfo, ContentType contentType)
             throws ODataApplicationException, ODataLibraryException {
 
-        ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
+        ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
+                oDataResponse, uriInfo);
 
         Entity entity = readData(context.getEntitySet(), context.getKeyPredicates());
 
-        context.respondWithEntity(entity, contentType, HttpStatusCode.OK, odata, serviceMetadata);
+        context.respondWithEntity(entity, contentType, HttpStatusCode.OK, serviceMetadata);
     }
 
     @Override
@@ -55,7 +56,8 @@ public class QuarkusEntityProcessor
                              ContentType requestFormat, ContentType responseFormat)
             throws ODataApplicationException, ODataLibraryException {
 
-        ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
+        ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
+                oDataResponse, uriInfo);
 
         EdmEntitySet edmEntitySet = context.getEntitySet();
         EntitySet entitySet =
@@ -63,9 +65,8 @@ public class QuarkusEntityProcessor
                         .orElseThrow(() -> new ODataApplicationException("no entityset",
                                 HttpStatusCode.BAD_REQUEST.getStatusCode(), Locale.ENGLISH));
         try {
-            Entity entity = createData(entitySet, context.getEntityFromRequest(odata,
-                    requestFormat));
-            context.respondWithEntity(entity, responseFormat, HttpStatusCode.CREATED, odata,
+            Entity entity = createData(entitySet, context.getEntityFromRequest(requestFormat));
+            context.respondWithEntity(entity, responseFormat, HttpStatusCode.CREATED,
                     serviceMetadata);
         } catch (DeserializerException e) {
             throw new ODataApplicationException("Cannot deserialize request data",
@@ -81,7 +82,8 @@ public class QuarkusEntityProcessor
                              UriInfo uriInfo, ContentType contentType, ContentType contentType1)
             throws ODataApplicationException, ODataLibraryException {
 
-        ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
+        ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
+                oDataResponse, uriInfo);
 
         EntitySet entitySet = repository.findEntitySet(context.getEntitySet().getName())
                 .orElseThrow(() -> new ODataApplicationException("",
@@ -100,12 +102,13 @@ public class QuarkusEntityProcessor
             Object data = null;
             if (context.isPatch()) {
                 data = odataEntityConverter
-                        .patchFrameworkEntityToAppData(context.getEntityFromRequest(odata,
-                                contentType), entitySet, old_data);
+                        .patchFrameworkEntityToAppData(context.getEntityFromRequest(contentType),
+                                entitySet,
+                                old_data);
             } else {
                 data = odataEntityConverter
-                        .convertFrameworkEntityToAppData(context.getEntityFromRequest(odata,
-                                contentType), entitySet);
+                        .convertFrameworkEntityToAppData(context.getEntityFromRequest(contentType),
+                                entitySet);
             }
             ((EntityProvider<?>) serviceBean).update(keys, data);
         }
@@ -117,7 +120,8 @@ public class QuarkusEntityProcessor
                              UriInfo uriInfo) throws ODataApplicationException,
             ODataLibraryException {
 
-        ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
+        ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
+                oDataResponse, uriInfo);
         deleteData(context.getEntitySet(), context.getKeyPredicates());
         context.respondWithNoContent();
     }
@@ -133,7 +137,9 @@ public class QuarkusEntityProcessor
                 Map<String, String> keys = new HashMap<>();
                 odataEntityConverter.convertKeysToAppFormat(keyPredicates, entitySet, keys);
                 ((EntityProvider<?>) serviceBean).find(keys).ifPresent(data -> {
-                    odataEntityConverter.convertDataToFrameworkEntity(entity, entitySet, data);
+                    odataEntityConverter.convertDataToFrameworkEntity(entity,
+                            repository.findEntityType(entitySet.getEntityType()).orElseThrow(),
+                            data);
                 });
             }
         });
@@ -148,7 +154,8 @@ public class QuarkusEntityProcessor
 
             Object data = odataEntityConverter.convertFrameworkEntityToAppData(entity, entitySet);
             Object createdData = ((EntityProvider<?>) serviceBean).create(data);
-            odataEntityConverter.convertDataToFrameworkEntity(createdEntity, entitySet,
+            odataEntityConverter.convertDataToFrameworkEntity(createdEntity,
+                    repository.findEntityType(entitySet.getEntityType()).orElseThrow(),
                     createdData);
         }
         return createdEntity;

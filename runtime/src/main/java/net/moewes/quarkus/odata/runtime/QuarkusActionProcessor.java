@@ -6,14 +6,8 @@ import net.moewes.quarkus.odata.repository.DataTypeKind;
 import net.moewes.quarkus.odata.repository.DataTypes;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
-import org.apache.olingo.commons.api.data.Entity;
-import org.apache.olingo.commons.api.data.Parameter;
-import org.apache.olingo.commons.api.data.Property;
-import org.apache.olingo.commons.api.data.ValueType;
-import org.apache.olingo.commons.api.edm.EdmAction;
-import org.apache.olingo.commons.api.edm.EdmEntitySet;
-import org.apache.olingo.commons.api.edm.EdmPrimitiveType;
-import org.apache.olingo.commons.api.edm.EdmReturnType;
+import org.apache.olingo.commons.api.data.*;
+import org.apache.olingo.commons.api.edm.*;
 import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
@@ -60,7 +54,8 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                        ContentType contentType,
                                        ContentType contentType1) throws ODataApplicationException {
 
-        ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
+        ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
+                oDataResponse, uriInfo); // FIXME ActionRequestContext
 
         UriResource lastUriPart = context.getLastUriPart();
 
@@ -136,7 +131,6 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                     (EdmPrimitiveType) returnType.getType(),
                                     contentType,
                                     HttpStatusCode.OK,
-                                    odata,
                                     serviceMetadata);
 
 
@@ -145,7 +139,8 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                  DeserializerException | ODataApplicationException e) {
                             e.printStackTrace(); // FIXME
                         }
-                        odataEntityConverter.convertDataToFrameworkEntity(entity, entitySet, data);
+                        // odataEntityConverter.convertDataToFrameworkEntity(entity, entitySet,
+                        // data);
                     });
                 }
             });
@@ -164,8 +159,34 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                               ContentType exportContentType)
             throws ODataApplicationException, ODataLibraryException {
 
-        ActionRequestContext context = new ActionRequestContext(oDataRequest, oDataResponse,
+        ActionRequestContext context = new ActionRequestContext(odata, oDataRequest, oDataResponse,
                 uriInfo);
+
+        try {
+            Object result = processAction(importContentType, context);
+
+            EntityCollection collection = new EntityCollection();
+
+            EdmType edmType = context.getEdmReturnType().getType();
+            if (result instanceof Collection) {
+                ((Collection<?>) result).forEach(data -> {
+                    Entity entity = new Entity();
+                    odataEntityConverter.convertDataToFrameworkEntity(entity,
+                            repository.findEntityType(edmType.getName())
+                                    .orElseThrow(),
+                            data);
+                    collection.getEntities().add(entity);
+                });
+            }
+
+            context.respondWithEntityCollection(collection,
+                    exportContentType,
+                    HttpStatusCode.OK,
+                    serviceMetadata);
+
+        } catch (SerializerException | DeserializerException e) {
+            throw new ODataRuntimeException(e);
+        }
     }
 
     @Override
@@ -176,20 +197,20 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                     ContentType exportContentType)
             throws ODataApplicationException, ODataLibraryException {
 
-        ActionRequestContext context = new ActionRequestContext(oDataRequest, oDataResponse,
+        ActionRequestContext context = new ActionRequestContext(odata, oDataRequest, oDataResponse,
                 uriInfo);
         try {
             Object result = processAction(importContentType, context);
 
+            EdmType edmType = context.getEdmReturnType().getType();
             Entity entity = new Entity();
             odataEntityConverter.convertDataToFrameworkEntity(entity,
-                    getEntitySet(context),
+                    repository.findEntityType(edmType.getName()).orElseThrow(),
                     result);
 
             context.respondWithEntity(entity,
                     exportContentType,
                     HttpStatusCode.OK,
-                    odata,
                     serviceMetadata);
 
         } catch (SerializerException | DeserializerException e) {
@@ -206,17 +227,18 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                                                  ContentType exportContentType)
             throws ODataApplicationException, ODataLibraryException {
 
-        ActionRequestContext context = new ActionRequestContext(oDataRequest, oDataResponse,
+        ActionRequestContext context = new ActionRequestContext(odata, oDataRequest, oDataResponse,
                 uriInfo);
 
         try {
             Object result = processAction(importContentType, context);
 
+            /*
             Entity entity = new Entity();
             odataEntityConverter.convertDataToFrameworkEntity(entity,
                     getEntitySet(context),
                     result);
-
+*/
             context.respondWithNoContent();
             if (1 != 1) {
                 throw new SerializerException(null, null);

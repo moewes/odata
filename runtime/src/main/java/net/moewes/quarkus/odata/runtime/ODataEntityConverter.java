@@ -44,9 +44,13 @@ public class ODataEntityConverter {
         }
     }
 
-    void convertDataToFrameworkEntity(Entity entity, EntitySet entitySet, Object data) {
+    void convertDataToFrameworkEntity(Entity entity, EntityType entityType,
+                                      Object data) {
+        /*
         EntityType entityType = repository.findEntityType(entitySet.getEntityType())
                 .orElseThrow(() -> new ODataRuntimeException("EntityType " + entitySet.getEntityType() + " not found"));
+
+         */
 
         for (EntityProperty entityProperty : entityType.getPropertyMap().values()) {
             try {

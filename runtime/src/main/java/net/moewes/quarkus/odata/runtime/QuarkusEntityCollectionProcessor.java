@@ -53,7 +53,8 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                                      ContentType contentType)
             throws ODataApplicationException, ODataLibraryException {
 
-        ODataRequestContext context = new ODataRequestContext(oDataRequest, oDataResponse, uriInfo);
+        ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
+                oDataResponse, uriInfo);
 
         UriResource lastUriPart = context.getLastUriPart();
 
@@ -115,7 +116,9 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                 if (dataCollection instanceof Collection) {
                     ((Collection<?>) dataCollection).forEach(data -> {
                         Entity entity = new Entity();
-                        odataEntityConverter.convertDataToFrameworkEntity(entity, entitySet, data);
+                        odataEntityConverter.convertDataToFrameworkEntity(entity,
+                                repository.findEntityType(entitySet.getEntityType()).orElseThrow(),
+                                data);
 
                         collection.getEntities().add(entity);
                     });
@@ -181,7 +184,8 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                             ((Collection<?>) result).forEach(item -> {
                                 Entity entity = new Entity();
                                 odataEntityConverter.convertDataToFrameworkEntity(entity,
-                                        effectiveEntitySet,
+                                        repository.findEntityType(effectiveEntitySet.getEntityType())
+                                                .orElseThrow(),
                                         item);
 
                                 collection.getEntities().add(entity);
