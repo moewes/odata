@@ -6,7 +6,6 @@ import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.annotations.ODataAction;
 import net.moewes.quarkus.odata.annotations.ODataEntitySet;
 import net.moewes.quarkus.odata.annotations.ODataFunction;
-import net.moewes.quarkus.odata.annotations.ODataNavigationBinding;
 import org.apache.olingo.server.api.ODataApplicationException;
 
 import java.util.ArrayList;
@@ -61,17 +60,17 @@ public class MyEntityService
 
     }
 
-    @ODataNavigationBinding("SiblingEntity")
+    //@ODataNavigationBinding("SiblingEntity") // FIXME
     public MyEntity getSiblingEntity(MyEntity entity) {
         return null;
     }
 
-    @ODataNavigationBinding("DraftAdministrativData")
+    //@ODataNavigationBinding("DraftAdministrativData") // FIXME
     public DraftAdministrativeData getDraftAdministrativeData(MyEntity entity) {
         return null;
     }
 
-    @ODataNavigationBinding("SecondEntity")
+    //@ODataNavigationBinding("SecondEntity") // FIXME
     public List<MySecondEntity> getNavigation(MyEntity entity) {
         return null;
     }

@@ -1,5 +1,6 @@
 package net.moewes.quarkus.odata.runtime;
 
+import lombok.Getter;
 import org.apache.olingo.commons.api.data.ContextURL;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
@@ -18,10 +19,7 @@ import org.apache.olingo.server.api.deserializer.DeserializerException;
 import org.apache.olingo.server.api.deserializer.DeserializerResult;
 import org.apache.olingo.server.api.deserializer.ODataDeserializer;
 import org.apache.olingo.server.api.serializer.*;
-import org.apache.olingo.server.api.uri.UriInfo;
-import org.apache.olingo.server.api.uri.UriParameter;
-import org.apache.olingo.server.api.uri.UriResource;
-import org.apache.olingo.server.api.uri.UriResourceEntitySet;
+import org.apache.olingo.server.api.uri.*;
 
 import java.io.InputStream;
 import java.util.List;
@@ -34,25 +32,73 @@ public class ODataRequestContext {
     private final ODataResponse response;
     private final UriInfo uriInfo;
 
+    private final int level;
+    @Getter
+    private final ODataRequestContext parentContext;
+
+    protected UriResource uriResource;
+
     public ODataRequestContext(OData odata, ODataRequest oDataRequest,
                                ODataResponse oDataResponse,
                                UriInfo uriInfo) {
+
+        this(odata,
+                oDataRequest,
+                oDataResponse,
+                uriInfo,
+                uriInfo.getUriResourceParts().size() - 1);
+
+    }
+
+    private ODataRequestContext(OData odata, ODataRequest oDataRequest,
+                                ODataResponse oDataResponse,
+                                UriInfo uriInfo,
+                                int level) {
 
         this.request = oDataRequest;
         this.odata = odata;
         this.response = oDataResponse;
         this.uriInfo = uriInfo;
+        this.level = level;
+        this.uriResource = uriInfo.getUriResourceParts().get(level);
+
+        if (level != 0) {
+            parentContext = new ODataRequestContext(odata, oDataRequest, oDataResponse, uriInfo,
+                    level - 1);
+        } else {
+            parentContext = null;
+        }
+    }
+
+    public UriResource getUriResource() {
+        return uriResource;
+    }
+
+    public boolean isEntitySet() {
+        return (uriResource instanceof UriResourceEntitySet);
+    }
+
+    public boolean isNavigation() {
+        return (uriResource instanceof UriResourceNavigation);
+    }
+
+    public boolean isFunction() {
+        return (uriResource instanceof UriResourceFunction);
+    }
+
+    public boolean isPrimitiveProperty() {
+        return (uriResource instanceof UriResourcePrimitiveProperty);
     }
 
     public List<UriParameter> getKeyPredicates() {
 
-        UriResourceEntitySet uriResourceEntitySet = getUriResourceEntitySet(0);
+        UriResourceEntitySet uriResourceEntitySet = getUriResourceEntitySet(level);
         return uriResourceEntitySet.getKeyPredicates();
     }
 
     public EdmEntitySet getEntitySet() {
 
-        UriResourceEntitySet uriResourceEntitySet = getUriResourceEntitySet(0);
+        UriResourceEntitySet uriResourceEntitySet = getUriResourceEntitySet(level);
         return uriResourceEntitySet.getEntitySet();
     }
 

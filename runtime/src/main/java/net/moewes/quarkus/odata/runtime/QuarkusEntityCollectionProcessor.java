@@ -1,7 +1,6 @@
 package net.moewes.quarkus.odata.runtime;
 
 import net.moewes.quarkus.odata.EntityCollectionProvider;
-import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.repository.Action;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
@@ -147,11 +146,11 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
         repository.findEntitySet(parentEntitySet.getName()).ifPresent(entitySet -> {
             Object serviceBean = repository.getServiceBean(entitySet);
 
-            if (serviceBean instanceof EntityProvider<?>) {
+            if (serviceBean instanceof EntityCollectionProvider<?>) {
 
                 Map<String, String> keys = new HashMap<>();
                 odataEntityConverter.convertKeysToAppFormat(keyPredicates, entitySet, keys);
-                ((EntityProvider<?>) serviceBean).find(keys).ifPresent(data -> {
+                ((EntityCollectionProvider<?>) serviceBean).find(keys).ifPresent(data -> {
                     try {
                         String entityTypeName = navigationProperty.getType().getName();
                         navigationProperty.getName();
@@ -177,8 +176,8 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                             }
                         });
                         Method declaredMethod =
-                                serviceBean.getClass().getDeclaredMethod(action.getName(),
-                                        parameterClasses.toArray(Class[]::new));
+                                serviceBean.getClass().getDeclaredMethod("get" + action.getName(),
+                                        parameterClasses.toArray(Class[]::new)); // FIXME
 
                         List<Object> valueList = new ArrayList<>();
                         valueList.add(data);

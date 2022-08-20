@@ -77,6 +77,7 @@ public class EdmRepository {
         return Optional.ofNullable(actions.get(actionName));
     }
 
+    @Deprecated
     public Object getServiceBean(EntitySet entitySet) {
 
         try {

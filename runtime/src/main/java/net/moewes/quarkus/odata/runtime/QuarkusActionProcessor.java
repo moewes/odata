@@ -1,12 +1,11 @@
 package net.moewes.quarkus.odata.runtime;
 
-import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.repository.Action;
-import net.moewes.quarkus.odata.repository.DataTypeKind;
-import net.moewes.quarkus.odata.repository.DataTypes;
-import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
-import org.apache.olingo.commons.api.data.*;
+import org.apache.olingo.commons.api.data.Entity;
+import org.apache.olingo.commons.api.data.EntityCollection;
+import org.apache.olingo.commons.api.data.Property;
+import org.apache.olingo.commons.api.data.ValueType;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveType;
 import org.apache.olingo.commons.api.edm.EdmType;
 import org.apache.olingo.commons.api.ex.ODataRuntimeException;
@@ -19,11 +18,9 @@ import org.apache.olingo.server.api.processor.ActionEntityProcessor;
 import org.apache.olingo.server.api.processor.ActionPrimitiveCollectionProcessor;
 import org.apache.olingo.server.api.processor.ActionPrimitiveProcessor;
 import org.apache.olingo.server.api.uri.UriInfo;
-import org.apache.olingo.server.api.uri.UriParameter;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Collection;
+import java.util.Locale;
 
 public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
         ActionPrimitiveCollectionProcessor, ActionEntityProcessor, ActionEntityCollectionProcessor {
@@ -156,92 +153,21 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
                         HttpStatusCode.BAD_REQUEST.getStatusCode(),
                         Locale.ENGLISH));
 
-        Object serviceBean;
+        ServiceBean serviceBean;
         Object boundEntityData;
 
         // is action bound
         if (action.getEntitySet() != null) {
-            serviceBean = getServiceBeanForEntitySet(context);
-            boundEntityData = getBoundEntityData(serviceBean, context);
+            serviceBean =
+                    new ServiceBean(repository.findEntitySet(action.getEntitySet()).orElseThrow());
+            boundEntityData = serviceBean.getBoundEntityData(context,
+                    new ODataEntityConverter(repository));
         } else {
             throw new ODataRuntimeException("not supported");
         }
 
-        return callAction(context, action, serviceBean, boundEntityData,
+        return serviceBean.callAction(context, action,
+                boundEntityData,
                 context.getActionParameter(importContentType));
-    }
-
-    private Object getServiceBeanForEntitySet(ActionRequestContext context) {
-
-        EntitySet entitySet = getEntitySet(context);
-
-        Object serviceBean = repository.getServiceBean(entitySet);
-        if (serviceBean instanceof EntityProvider<?>) {
-            return serviceBean;
-        } else {
-            throw new ODataRuntimeException("service class for bound action must implement " +
-                    "EntityProvider<?>");
-        }
-    }
-
-    private Object getBoundEntityData(Object serviceBean, ActionRequestContext context)
-            throws ODataApplicationException {
-
-        List<UriParameter> keyPredicates = context.getKeyPredicates();
-        Map<String, String> keys = new HashMap<>();
-        odataEntityConverter.convertKeysToAppFormat(keyPredicates, getEntitySet(context), keys);
-        return ((EntityProvider<?>) serviceBean).find(keys)
-                .orElseThrow(() -> new ODataApplicationException("could  not find bound entity " +
-                        "data", 404, Locale.ENGLISH));
-    }
-
-    private EntitySet getEntitySet(ActionRequestContext context) {
-        return repository.findEntitySet(context.getEntitySet().getName())
-                .orElseThrow(() -> new ODataRuntimeException("could not happen"));
-    }
-
-    private Object callAction(ActionRequestContext context,
-                              Action action,
-                              Object serviceBean,
-                              Object boundEntityData,
-                              Map<String, Parameter> actionParameters) {
-
-        try {
-            List<Class<?>> parameterClasses = new ArrayList<>();
-            action.getParameter().forEach(parameter -> {
-                if (parameter.getTypeKind().equals(DataTypeKind.PRIMITIVE)) {
-                    parameterClasses.add(DataTypes.getClassForEdmType(parameter.getEdmType()));
-                } else {
-                    try {
-                        Class<?> aClass =
-                                Class.forName(parameter.getTypeName(), true,
-                                        Thread.currentThread()
-                                                .getContextClassLoader());
-                        parameterClasses.add(aClass);
-                    } catch (ClassNotFoundException e) {
-                        throw new ODataRuntimeException(e);
-                    }
-                }
-            });
-            Method declaredMethod =
-                    serviceBean.getClass().getDeclaredMethod(context.getActionName(),
-                            parameterClasses.toArray(Class[]::new));
-
-            List<Object> valueList = new ArrayList<>();
-            if (boundEntityData != null) {
-                valueList.add(boundEntityData);
-            }
-            action.getParameter().forEach(parameter -> {
-                if (!parameter.isBindingParameter()) {
-                    Object value = actionParameters.get(parameter.getName())
-                            .asPrimitive();
-                    valueList.add(value);
-                }
-            });
-
-            return declaredMethod.invoke(serviceBean, valueList.toArray());
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            throw new ODataRuntimeException(e);
-        }
     }
 }

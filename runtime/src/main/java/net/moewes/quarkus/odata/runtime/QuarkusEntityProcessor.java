@@ -1,5 +1,6 @@
 package net.moewes.quarkus.odata.runtime;
 
+import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
@@ -44,11 +45,27 @@ public class QuarkusEntityProcessor
 
         ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
                 oDataResponse, uriInfo);
+        EdmEntitySet entitySet;
+        List<UriParameter> keyPredicates;
 
-        Entity entity = readData(context.getEntitySet(), context.getKeyPredicates());
+        Entity entity;
+        if (context.isNavigation()) {
+            entitySet = context.getParentContext().getEntitySet();
+            keyPredicates = context.getParentContext().getKeyPredicates();
+            entity = readNavigationData(entitySet, keyPredicates);
+        } else {
+            entitySet = context.getEntitySet();
+            keyPredicates = context.getKeyPredicates();
+            entity = readData(entitySet, keyPredicates);
+        }
 
         context.respondWithEntity(entity, contentType, HttpStatusCode.OK, serviceMetadata);
     }
+
+    private Entity readNavigationData(EdmEntitySet entitySet, List<UriParameter> keyPredicates) {
+        return new Entity();
+    }
+
 
     @Override
     public void createEntity(ODataRequest oDataRequest, ODataResponse oDataResponse,
@@ -95,7 +112,7 @@ public class QuarkusEntityProcessor
             odataEntityConverter.convertKeysToAppFormat(context.getKeyPredicates(), entitySet,
                     keys);
             Object old_data =
-                    ((EntityProvider<?>) serviceBean).find(keys)
+                    ((EntityCollectionProvider<?>) serviceBean).find(keys)
                             .orElseThrow(() -> new ODataApplicationException("Not found",
                                     HttpStatusCode.NOT_FOUND.getStatusCode(), Locale.ENGLISH));
 
@@ -132,11 +149,11 @@ public class QuarkusEntityProcessor
         repository.findEntitySet(edmEntitySet.getName()).ifPresent(entitySet -> {
 
             Object serviceBean = repository.getServiceBean(entitySet);
-            if (serviceBean instanceof EntityProvider<?>) {
+            if (serviceBean instanceof EntityCollectionProvider<?>) {
 
                 Map<String, String> keys = new HashMap<>();
                 odataEntityConverter.convertKeysToAppFormat(keyPredicates, entitySet, keys);
-                ((EntityProvider<?>) serviceBean).find(keys).ifPresent(data -> {
+                ((EntityCollectionProvider<?>) serviceBean).find(keys).ifPresent(data -> {
                     odataEntityConverter.convertDataToFrameworkEntity(entity,
                             repository.findEntityType(entitySet.getEntityType()).orElseThrow(),
                             data);
