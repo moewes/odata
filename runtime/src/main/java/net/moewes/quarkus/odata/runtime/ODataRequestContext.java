@@ -95,9 +95,10 @@ public class ODataRequestContext {
 
     public List<UriParameter> getKeyPredicates() {
 
-        UriResource uriResourceEntitySet = getUriResource(level);
-        if (uriResourceEntitySet instanceof UriResourceEntitySet) {
-            return ((UriResourceEntitySet) uriResourceEntitySet).getKeyPredicates();
+        if (uriResource instanceof UriResourceEntitySet) {
+            return ((UriResourceEntitySet) uriResource).getKeyPredicates();
+        } else if (uriResource instanceof UriResourceNavigation) {
+            return ((UriResourceNavigation) uriResource).getKeyPredicates();
         } else {
             return new ArrayList<>();
         }
@@ -206,11 +207,7 @@ public class ODataRequestContext {
         response.setHeader(HttpHeader.CONTENT_TYPE, contentType.toContentTypeString());
     }
 
-    private UriResource getUriResource(int level) {
-        List<UriResource> resourcePaths = uriInfo.getUriResourceParts();
-        return resourcePaths.get(level);
-    }
-
+    
     public UriResource getLastUriPart() {
         List<UriResource> resourcePaths = uriInfo.getUriResourceParts();
         return resourcePaths.get(resourcePaths.size() - 1);

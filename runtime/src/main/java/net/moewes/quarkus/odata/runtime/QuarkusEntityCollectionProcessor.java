@@ -13,7 +13,8 @@ import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.*;
 import org.apache.olingo.server.api.processor.EntityCollectionProcessor;
-import org.apache.olingo.server.api.uri.*;
+import org.apache.olingo.server.api.uri.UriInfo;
+import org.apache.olingo.server.api.uri.UriParameter;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -47,15 +48,13 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
         ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
                 oDataResponse, uriInfo);
 
-        UriResource lastUriPart = context.getLastUriPart();
-
         EntityCollection entityCollection;
         EdmEntitySet edmEntitySet;
 
-        if (lastUriPart instanceof UriResourceEntitySet) {
+        if (context.isEntitySet()) {
             edmEntitySet = context.getEntitySet();
             entityCollection = getData(edmEntitySet);
-        } else if (lastUriPart instanceof UriResourceNavigation) {
+        } else if (context.isNavigation()) {
             EdmNavigationProperty navigationProperty = context.getNavigationProperty();
 
             ODataRequestContext parentContext = context.getParentContext();
