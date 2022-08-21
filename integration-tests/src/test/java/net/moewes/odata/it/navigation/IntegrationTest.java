@@ -133,4 +133,16 @@ public class IntegrationTest {
         Assertions.assertEquals(2, list.size());
     }
 
+    @Test
+    public void getProductForOrderItem() {
+
+        Response response = given()
+                .when()
+                .get("/odata/OrderItems(OrderId='O1',Number=1)/Product");
+
+        response
+                .then()
+                .statusCode(200);
+    }
+
 }

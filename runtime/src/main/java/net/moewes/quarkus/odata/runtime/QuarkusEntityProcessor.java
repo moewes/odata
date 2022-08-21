@@ -2,10 +2,13 @@ package net.moewes.quarkus.odata.runtime;
 
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.EntityProvider;
+import net.moewes.quarkus.odata.repository.Action;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
+import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
+import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.*;
@@ -14,10 +17,9 @@ import org.apache.olingo.server.api.serializer.SerializerException;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriParameter;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.*;
 
 public class QuarkusEntityProcessor
         implements org.apache.olingo.server.api.processor.EntityProcessor {
@@ -50,9 +52,16 @@ public class QuarkusEntityProcessor
 
         Entity entity;
         if (context.isNavigation()) {
-            entitySet = context.getParentContext().getEntitySet();
+            EdmEntitySet parentEntitySet = context.getParentContext().getEntitySet();
             keyPredicates = context.getParentContext().getKeyPredicates();
-            entity = readNavigationData(entitySet, keyPredicates);
+
+            EdmNavigationProperty navigationProperty = context.getNavigationProperty();
+
+            entitySet = context.getEntitySet();
+            entity = readNavigationData(parentEntitySet,
+                    keyPredicates,
+                    navigationProperty,
+                    entitySet);
         } else {
             entitySet = context.getEntitySet();
             keyPredicates = context.getKeyPredicates();
@@ -62,8 +71,72 @@ public class QuarkusEntityProcessor
         context.respondWithEntity(entity, contentType, HttpStatusCode.OK, serviceMetadata);
     }
 
-    private Entity readNavigationData(EdmEntitySet entitySet, List<UriParameter> keyPredicates) {
-        return new Entity();
+    private Entity readNavigationData(EdmEntitySet parentEntitySet,
+                                      List<UriParameter> keyPredicates,
+                                      EdmNavigationProperty navigationProperty,
+                                      EdmEntitySet edmEntitySet) {
+
+        Entity result = new Entity();
+
+        repository.findEntitySet(parentEntitySet.getName()).ifPresent(entitySet -> {
+            Object serviceBean = repository.getServiceBean(entitySet);
+
+            if (serviceBean instanceof EntityCollectionProvider<?>) {
+
+                Map<String, String> keys = new HashMap<>();
+                odataEntityConverter.convertKeysToAppFormat(keyPredicates, entitySet, keys);
+                ((EntityCollectionProvider<?>) serviceBean).find(keys).ifPresent(data -> {
+                    try {
+                        String entityTypeName = navigationProperty.getType().getName();
+                        navigationProperty.getName();
+
+                        Action action = entitySet.getNavigationBindings()
+                                .stream()
+                                .filter(action1 -> action1.getReturnType()
+                                        .getEntityType()
+                                        .equals(entityTypeName))
+                                .findFirst().orElseThrow(() -> new ODataApplicationException("Can" +
+                                        "'t find Navigation",
+                                        HttpStatusCode.BAD_REQUEST.getStatusCode(),
+                                        Locale.ENGLISH));
+
+                        List<Class<?>> parameterClasses = new ArrayList<>();
+                        action.getParameter().forEach(parameter -> {
+                            try {
+                                Class<?> aClass = Class.forName(parameter.getTypeName(), true,
+                                        Thread.currentThread().getContextClassLoader());
+                                parameterClasses.add(aClass);
+                            } catch (ClassNotFoundException e) {
+                                e.printStackTrace();
+                            }
+                        });
+                        Method declaredMethod =
+                                serviceBean.getClass().getDeclaredMethod("get" + action.getName(),
+                                        parameterClasses.toArray(Class[]::new)); // FIXME
+
+                        List<Object> valueList = new ArrayList<>();
+                        valueList.add(data);
+
+                        Object result2 = declaredMethod.invoke(serviceBean, valueList.toArray());
+
+                        EntitySet effectiveEntitySet =
+                                repository.findEntitySet(edmEntitySet.getName())
+                                        .orElseThrow(() -> new ODataRuntimeException(
+                                                "Can't find Entityset"));
+
+                        odataEntityConverter.convertDataToFrameworkEntity(result,
+                                repository.findEntityType(effectiveEntitySet.getEntityType())
+                                        .orElseThrow(),
+                                result2);
+
+                    } catch (IllegalAccessException | InvocationTargetException |
+                             NoSuchMethodException | ODataApplicationException e) {
+                        e.printStackTrace(); // FIXME
+                    }
+                });
+            }
+        });
+        return result;
     }
 
 

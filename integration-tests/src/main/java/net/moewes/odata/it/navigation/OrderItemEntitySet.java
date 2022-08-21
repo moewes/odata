@@ -2,6 +2,7 @@ package net.moewes.odata.it.navigation;
 
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.annotations.ODataEntitySet;
+import net.moewes.quarkus.odata.annotations.ODataNavigationBinding;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -21,6 +22,13 @@ public class OrderItemEntitySet implements EntityCollectionProvider<OrderItem> {
 
     @Override
     public Optional<OrderItem> find(Map<String, String> keys) {
-        return Optional.empty();
+        String orderId = keys.get("OrderId");
+        int number = Integer.parseInt(keys.get("Number"));
+        return dataBase.getOrderItem(orderId, number);
+    }
+
+    @ODataNavigationBinding("Product")
+    public Product getProduct(OrderItem orderItem) {
+        return new Product();
     }
 }

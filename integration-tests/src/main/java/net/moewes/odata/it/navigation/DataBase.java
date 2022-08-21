@@ -19,7 +19,7 @@ public class DataBase {
 
         store.add(OrderDatabaseItem.builder()
                 .OrderId("O1")
-                .orderDate(LocalDate.of(2022, 01, 01))
+                .orderDate(LocalDate.of(2022, 1, 1))
                 .OrderItemLine(1)
                 .productId("P1")
                 .customerId("C1")
@@ -29,7 +29,7 @@ public class DataBase {
 
         store.add(OrderDatabaseItem.builder()
                 .OrderId("O1")
-                .orderDate(LocalDate.of(2022, 01, 01))
+                .orderDate(LocalDate.of(2022, 1, 1))
                 .OrderItemLine(2)
                 .productId("P2")
                 .customerId("C1")
@@ -39,7 +39,7 @@ public class DataBase {
 
         store.add(OrderDatabaseItem.builder()
                 .OrderId("O2")
-                .orderDate(LocalDate.of(2022, 02, 01))
+                .orderDate(LocalDate.of(2022, 2, 1))
                 .OrderItemLine(1)
                 .productId("P1")
                 .customerId("C1")
@@ -49,7 +49,7 @@ public class DataBase {
 
         store.add(OrderDatabaseItem.builder()
                 .OrderId("O3")
-                .orderDate(LocalDate.of(2022, 03, 01))
+                .orderDate(LocalDate.of(2022, 3, 1))
                 .OrderItemLine(1)
                 .productId("P1")
                 .customerId("C2")
@@ -65,7 +65,7 @@ public class DataBase {
             result.setId(item.getCustomerId());
             result.setName(item.getCustomerName());
             return result;
-        }).collect(Collectors.toSet()).stream().collect(Collectors.toList());
+        }).distinct().collect(Collectors.toList());
     }
 
     public List<Product> getAllProducts() {
@@ -75,7 +75,7 @@ public class DataBase {
             result.setId(item.getProductId());
             result.setName(item.getProductName());
             return result;
-        }).collect(Collectors.toSet()).stream().collect(Collectors.toList());
+        }).distinct().collect(Collectors.toList());
     }
 
     public List<Order> getAllOrders() {
@@ -86,7 +86,7 @@ public class DataBase {
             result.setOrderDate(item.getOrderDate());
             result.setDelivered(item.isDelivered());
             return result;
-        }).collect(Collectors.toSet()).stream().collect(Collectors.toList());
+        }).distinct().collect(Collectors.toList());
     }
 
     public List<OrderItem> getAllOrderItems() {
@@ -97,7 +97,7 @@ public class DataBase {
             result.setOrderId(item.getOrderId());
             result.setQuantity(item.getQuantity());
             return result;
-        }).collect(Collectors.toSet()).stream().collect(Collectors.toList());
+        }).distinct().collect(Collectors.toList());
     }
 
     public Optional<Order> getOrder(String id) {
@@ -125,5 +125,19 @@ public class DataBase {
                     result.setQuantity(orderDatabaseItem.getQuantity());
                     return result;
                 }).collect(Collectors.toList());
+    }
+
+    public Optional<OrderItem> getOrderItem(String orderId, int number) {
+        return store.stream()
+                .filter(item -> item.getOrderId().equals(orderId) && item.getOrderItemLine() ==
+                        number)
+                .findFirst()
+                .map(orderDatabaseItem -> {
+                    OrderItem result = new OrderItem();
+                    result.setOrderId(orderDatabaseItem.getOrderId());
+                    result.setNumber(orderDatabaseItem.getOrderItemLine());
+                    result.setQuantity(orderDatabaseItem.getQuantity());
+                    return result;
+                });
     }
 }

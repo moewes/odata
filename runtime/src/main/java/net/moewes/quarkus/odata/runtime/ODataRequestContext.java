@@ -5,7 +5,9 @@ import org.apache.olingo.commons.api.data.ContextURL;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.data.Property;
+import org.apache.olingo.commons.api.edm.EdmBindingTarget;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
+import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveType;
 import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpHeader;
@@ -22,6 +24,7 @@ import org.apache.olingo.server.api.serializer.*;
 import org.apache.olingo.server.api.uri.*;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ODataRequestContext {
@@ -92,14 +95,30 @@ public class ODataRequestContext {
 
     public List<UriParameter> getKeyPredicates() {
 
-        UriResourceEntitySet uriResourceEntitySet = getUriResourceEntitySet(level);
-        return uriResourceEntitySet.getKeyPredicates();
+        UriResource uriResourceEntitySet = getUriResource(level);
+        if (uriResourceEntitySet instanceof UriResourceEntitySet) {
+            return ((UriResourceEntitySet) uriResourceEntitySet).getKeyPredicates();
+        } else {
+            return new ArrayList<>();
+        }
     }
 
     public EdmEntitySet getEntitySet() {
 
-        UriResourceEntitySet uriResourceEntitySet = getUriResourceEntitySet(level);
-        return uriResourceEntitySet.getEntitySet();
+        if (uriResource instanceof UriResourceEntitySet) {
+            return ((UriResourceEntitySet) uriResource).getEntitySet();
+        } else if (uriResource instanceof UriResourceNavigation) {
+            UriResourceNavigation uriResourceNavigation =
+                    (UriResourceNavigation) uriResource;
+
+            EdmEntitySet parentEntitySet = getParentContext().getEntitySet();
+            EdmNavigationProperty navigationProperty = uriResourceNavigation.getProperty();
+            EdmBindingTarget relatedBindingTarget = parentEntitySet
+                    .getRelatedBindingTarget(navigationProperty.getName());
+            return (EdmEntitySet) relatedBindingTarget;
+        } else {
+            return null; // FIXME Throw Error?
+        }
     }
 
     public Entity getEntityFromRequest(ContentType requestFormat)
@@ -187,9 +206,9 @@ public class ODataRequestContext {
         response.setHeader(HttpHeader.CONTENT_TYPE, contentType.toContentTypeString());
     }
 
-    private UriResourceEntitySet getUriResourceEntitySet(int level) {
+    private UriResource getUriResource(int level) {
         List<UriResource> resourcePaths = uriInfo.getUriResourceParts();
-        return (UriResourceEntitySet) resourcePaths.get(level);
+        return resourcePaths.get(level);
     }
 
     public UriResource getLastUriPart() {
@@ -199,5 +218,14 @@ public class ODataRequestContext {
 
     public boolean isPatch() {
         return HttpMethod.PATCH.equals(request.getMethod());
+    }
+
+    public EdmNavigationProperty getNavigationProperty() {
+
+        if (isNavigation()) {
+            return ((UriResourceNavigation) uriResource).getProperty();
+        } else {
+            return null;
+        }
     }
 }

@@ -4,25 +4,17 @@ import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.repository.Action;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
-import org.apache.olingo.commons.api.data.ContextURL;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
-import org.apache.olingo.commons.api.edm.EdmBindingTarget;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
-import org.apache.olingo.commons.api.edm.EdmEntityType;
 import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
 import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 import org.apache.olingo.commons.api.format.ContentType;
-import org.apache.olingo.commons.api.http.HttpHeader;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.*;
 import org.apache.olingo.server.api.processor.EntityCollectionProcessor;
-import org.apache.olingo.server.api.serializer.EntityCollectionSerializerOptions;
-import org.apache.olingo.server.api.serializer.ODataSerializer;
-import org.apache.olingo.server.api.serializer.SerializerResult;
 import org.apache.olingo.server.api.uri.*;
 
-import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -59,57 +51,28 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
 
         EntityCollection entityCollection;
         EdmEntitySet edmEntitySet;
-        EdmEntityType edmEntityType;
+
         if (lastUriPart instanceof UriResourceEntitySet) {
-            UriResourceEntitySet uriResourceEntitySet = (UriResourceEntitySet) lastUriPart;
-            edmEntitySet = uriResourceEntitySet.getEntitySet();
-            edmEntityType = edmEntitySet.getEntityType();
+            edmEntitySet = context.getEntitySet();
             entityCollection = getData(edmEntitySet);
         } else if (lastUriPart instanceof UriResourceNavigation) {
-            UriResourceNavigation uriResourceNavigation = (UriResourceNavigation) lastUriPart;
-            EdmNavigationProperty navigationProperty = uriResourceNavigation.getProperty();
+            EdmNavigationProperty navigationProperty = context.getNavigationProperty();
 
-            String navigationPropertyName = navigationProperty.getName();
-            UriResourceEntitySet parentEntitySet =
-                    (UriResourceEntitySet) uriInfo.getUriResourceParts().get(0); // FIXME
-            EdmBindingTarget relatedBindingTarget = parentEntitySet.getEntitySet()
-                    .getRelatedBindingTarget(navigationProperty.getName());
-            edmEntitySet = (EdmEntitySet) relatedBindingTarget;
-            edmEntityType = navigationProperty.getType();
-            entityCollection = getNavigationData(parentEntitySet.getEntitySet(),
-                    parentEntitySet.getKeyPredicates(),
-                    navigationProperty, edmEntitySet);
+            ODataRequestContext parentContext = context.getParentContext();
+
+            entityCollection = getNavigationData(parentContext.getEntitySet(),
+                    parentContext.getKeyPredicates(),
+                    navigationProperty, context.getEntitySet());
         } else {
             throw new ODataApplicationException("Not supported",
                     HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(),
                     Locale.ENGLISH);
         }
 
-        /*
         context.respondWithEntityCollection(entityCollection,
                 contentType,
                 HttpStatusCode.OK,
                 serviceMetadata);
-        */
-        ODataSerializer serializer = odata.createSerializer(contentType);
-
-        ContextURL contextURL = ContextURL.with().entitySet(edmEntitySet).build();
-
-        final String id = oDataRequest.getRawBaseUri() + "/" + edmEntitySet.getName();
-
-        EntityCollectionSerializerOptions options =
-                EntityCollectionSerializerOptions.with().id(id).contextURL(contextURL).build();
-        SerializerResult serializerResult =
-                serializer.entityCollection(serviceMetadata,
-                        edmEntityType,
-                        entityCollection,
-                        options);
-
-        InputStream serializedContent = serializerResult.getContent();
-
-        oDataResponse.setContent(serializedContent);
-        oDataResponse.setStatusCode(HttpStatusCode.OK.getStatusCode());
-        oDataResponse.setHeader(HttpHeader.CONTENT_TYPE, contentType.toContentTypeString());
     }
 
     private EntityCollection getData(EdmEntitySet edmEntitySet) {
