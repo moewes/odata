@@ -22,6 +22,7 @@ public class DataBase {
                 .orderDate(LocalDate.of(2022, 1, 1))
                 .OrderItemLine(1)
                 .productId("P1")
+                .productName("Product one")
                 .customerId("C1")
                 .customerName("Customer One")
                 .quantity(5)
@@ -32,6 +33,7 @@ public class DataBase {
                 .orderDate(LocalDate.of(2022, 1, 1))
                 .OrderItemLine(2)
                 .productId("P2")
+                .productName("Product two")
                 .customerId("C1")
                 .customerName("Customer One")
                 .quantity(10)
@@ -42,6 +44,7 @@ public class DataBase {
                 .orderDate(LocalDate.of(2022, 2, 1))
                 .OrderItemLine(1)
                 .productId("P1")
+                .productName("Product one")
                 .customerId("C1")
                 .customerName("Customer One")
                 .quantity(20)
@@ -52,6 +55,7 @@ public class DataBase {
                 .orderDate(LocalDate.of(2022, 3, 1))
                 .OrderItemLine(1)
                 .productId("P1")
+                .productName("Product one")
                 .customerId("C2")
                 .customerName("Customer Two")
                 .quantity(5)
@@ -139,5 +143,19 @@ public class DataBase {
                     result.setQuantity(orderDatabaseItem.getQuantity());
                     return result;
                 });
+    }
+
+    public Product getPorductOfOrderItem(OrderItem orderItem) {
+        return store.stream()
+                .filter(item -> item.getOrderId()
+                        .equals(orderItem.getOrderId()) && item.getOrderItemLine() ==
+                        orderItem.getNumber())
+                .findFirst()
+                .map(orderDatabaseItem -> {
+                    Product result = new Product();
+                    result.setId(orderDatabaseItem.getProductId());
+                    result.setName(orderDatabaseItem.getProductName());
+                    return result;
+                }).orElseThrow();
     }
 }

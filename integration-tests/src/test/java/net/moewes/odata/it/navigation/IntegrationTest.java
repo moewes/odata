@@ -143,6 +143,11 @@ public class IntegrationTest {
         response
                 .then()
                 .statusCode(200);
+
+        JsonPath jsonPath = response.jsonPath();
+
+        Assertions.assertEquals("P1", jsonPath.get("Id"));
+        Assertions.assertEquals("Product one", jsonPath.get("Name"));
     }
 
 }

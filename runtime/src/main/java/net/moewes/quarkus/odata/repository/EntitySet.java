@@ -14,5 +14,5 @@ public class EntitySet {
     private String name;
     private String entityType;
     private String beanClassName;
-    private List<Action> navigationBindings; // TODO Rething type
+    private List<Callable> navigationBindings; // TODO Rething type
 }

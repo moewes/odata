@@ -29,6 +29,6 @@ public class OrderItemEntitySet implements EntityCollectionProvider<OrderItem> {
 
     @ODataNavigationBinding("Product")
     public Product getProduct(OrderItem orderItem) {
-        return new Product();
+        return dataBase.getPorductOfOrderItem(orderItem);
     }
 }

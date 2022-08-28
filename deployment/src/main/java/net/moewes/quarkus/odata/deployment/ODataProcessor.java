@@ -21,6 +21,7 @@ import org.jboss.logging.Logger;
 import javax.enterprise.context.ApplicationScoped;
 import java.util.*;
 
+
 class ODataProcessor {
 
     private static final String FEATURE = "OData V4";
@@ -99,6 +100,47 @@ class ODataProcessor {
     }
 
     @BuildStep
+    void scanForNavigationBindings(BeanArchiveIndexBuildItem beanArchiveIndex,
+                                   BuildProducer<NavigationBindingBuildItem> buildProducer) {
+
+        IndexView indexView = beanArchiveIndex.getIndex();
+        Collection<AnnotationInstance> navigationBindings =
+                indexView.getAnnotations(NAVIGATION_BINDING);
+
+        navigationBindings.forEach(annotationInstance -> {
+            MethodInfo methodInfo = annotationInstance.target().asMethod();
+            Callable callable = initCallableFromMethodInfo(annotationInstance, methodInfo);
+
+            if (methodInfo.parameterTypes().size() != 1) {
+                // FIXME Throw Extension
+                throw new RuntimeException("xxyyzz");
+            }
+
+
+            // log.info("NavigationBinding " + name + " " + declaringClass.simpleName() + " " +
+            // methodName);
+
+            String entitySet = "ES";
+            List<Parameter> parameters = new ArrayList<>();
+
+            buildProducer.produce(new NavigationBindingBuildItem(callable.getName(), callable));
+        });
+    }
+
+    private Callable initCallableFromMethodInfo(AnnotationInstance annotationInstance,
+                                                MethodInfo methodInfo) {
+        String name = annotationInstance.value().asString();
+        String methodName = methodInfo.name();
+        ClassInfo declaringClass = methodInfo.declaringClass();
+        String className = declaringClass.simpleName();
+        Callable callable = new Callable();
+        callable.setName(name);
+        callable.setClassName(className);
+        callable.setMethodName(methodName);
+        return callable;
+    }
+
+    @BuildStep
     @Record(ExecutionTime.STATIC_INIT)
     void scanForServices(ODataServiceRecorder recorder, // TODO
                          List<EntityTypeBuildItem> entityTypeBuildItems,
@@ -123,7 +165,7 @@ class ODataProcessor {
         for (AnnotationInstance service : services) {
             log.debug("found " + service.target().toString());
             String name = service.value().asString();
-            List<Action> navigationBindings = new ArrayList<>();
+            List<Callable> navigationBindings = new ArrayList<>();
 
             service.target().asClass().methods().forEach(methodInfo -> {
                 if (methodInfo.hasAnnotation(FUNCTION)) {
@@ -142,12 +184,12 @@ class ODataProcessor {
                     String actionName = methodInfo.name();
                     log.debug("found action " + actionName);
 
-                    Action action = new Action();
+                    Callable action = new Callable();
                     action.setName(actionName);
                     action.setEntitySet(name);
                     List<Parameter> actionParameters = new ArrayList<>();
                     int i = 0;
-                    for (Type parameter : methodInfo.parameters()) {
+                    for (Type parameter : methodInfo.parameterTypes()) {
                         log.debug(parameter.toString());
                         Parameter actionParameter = new Parameter();
 
@@ -193,12 +235,13 @@ class ODataProcessor {
                     }
                     log.debug("found Navigation" + actionName);
 
-                    Action action = new Action();
+                    Callable action = new Callable();
                     action.setName(actionName);
                     action.setEntitySet(name);
                     List<Parameter> actionParameters = new ArrayList<>();
                     int i = 0;
-                    for (Type parameterType : methodInfo.parameters()) { // FIXME es sollte nur einen Parameter geben! und der sollte dem EntityType des Sets entsprechen
+                    for (Type parameterType : methodInfo.parameterTypes()) { // FIXME es sollte nur
+                        // einen Parameter geben! und der sollte dem EntityType des Sets entsprechen
                         Parameter actionParameter = createParameter(entityTypes, parameterType);
                         actionParameter.setName(methodInfo.parameterName(i));
                         actionParameters.add(actionParameter);
@@ -224,6 +267,7 @@ class ODataProcessor {
     @Record(ExecutionTime.STATIC_INIT)
     void registerElements(List<EntityTypeBuildItem> entityTypeBuildItems,
                           List<EntitySetBuildItem> entitySetBuildItems,
+                          List<NavigationBindingBuildItem> navigationBindingBuildItems,
                           BeanContainerBuildItem beanContainer, ODataServiceRecorder recorder) {
 
         entityTypeBuildItems.forEach(entityTypeBuildItem -> {
@@ -295,13 +339,13 @@ class ODataProcessor {
             });
 
             if ((method.name().startsWith("get") || method.name()
-                    .startsWith("is")) && method.parameters().size() == 0) {
+                    .startsWith("is")) && method.parameterTypes().size() == 0) {
                 Type returnType = method.returnType();
                 log.debug("Prop: " + propertyName + "; Type: " + returnType.toString());
                 property.setEdmType(getEdmType(returnType.toString()));
                 property.setGetterName(method.name());
 
-            } else if (method.name().startsWith("set") && method.parameters().size() == 1
+            } else if (method.name().startsWith("set") && method.parameterTypes().size() == 1
             ) {
                 //property.setSetter(method); // FIXME
             }
@@ -309,7 +353,7 @@ class ODataProcessor {
             propertyMap.put(propertyName, property);
         }
 
-        classInfo.annotations().forEach((dotName, annotationInstances) -> {
+        classInfo.annotationsMap().forEach((dotName, annotationInstances) -> {
             log.debug("Found " + dotName.toString());
             if (DotName.createSimple(EntityKey.class.getName()).equals(dotName)) {
                 annotationInstances.forEach(annotationInstance -> {

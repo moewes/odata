@@ -1,7 +1,7 @@
 package net.moewes.quarkus.odata.runtime;
 
 import net.moewes.quarkus.odata.EntityCollectionProvider;
-import net.moewes.quarkus.odata.repository.Action;
+import net.moewes.quarkus.odata.repository.Callable;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.Entity;
@@ -115,15 +115,14 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                 ((EntityCollectionProvider<?>) serviceBean).find(keys).ifPresent(data -> {
                     try {
                         String entityTypeName = navigationProperty.getType().getName();
-                        navigationProperty.getName();
 
-                        Action action = entitySet.getNavigationBindings()
+                        Callable action = entitySet.getNavigationBindings()
                                 .stream()
                                 .filter(action1 -> action1.getReturnType()
                                         .getEntityType()
                                         .equals(entityTypeName))
                                 .findFirst().orElseThrow(() -> new ODataApplicationException("Can" +
-                                        "'t find Navigation",
+                                        "'t find NavigationBinding",
                                         HttpStatusCode.BAD_REQUEST.getStatusCode(),
                                         Locale.ENGLISH));
 

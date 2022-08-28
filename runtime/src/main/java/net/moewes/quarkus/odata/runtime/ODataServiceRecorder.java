@@ -2,7 +2,7 @@ package net.moewes.quarkus.odata.runtime;
 
 import io.quarkus.arc.runtime.BeanContainer;
 import io.quarkus.runtime.annotations.Recorder;
-import net.moewes.quarkus.odata.repository.Action;
+import net.moewes.quarkus.odata.repository.Callable;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.repository.EntityType;
 import net.moewes.quarkus.odata.repository.Function;
@@ -26,7 +26,7 @@ public class ODataServiceRecorder {
     public void registerAction(BeanContainer beanContainer,
                                String name,
                                String entitySet,
-                               Action action) {
+                               Callable action) {
         EdmRepository repository = beanContainer.instance(EdmRepository.class);
         repository.registerAction(name, entitySet, action);
     }

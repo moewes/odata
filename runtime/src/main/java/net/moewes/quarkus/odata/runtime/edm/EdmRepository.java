@@ -1,6 +1,6 @@
 package net.moewes.quarkus.odata.runtime.edm;
 
-import net.moewes.quarkus.odata.repository.Action;
+import net.moewes.quarkus.odata.repository.Callable;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.repository.EntityType;
 import net.moewes.quarkus.odata.repository.Function;
@@ -17,7 +17,7 @@ public class EdmRepository {
 
     private final Map<String, EntityType> entities = new HashMap<>();
     private final Map<String, EntitySet> entitySets = new HashMap<>();
-    private final Map<String, Action> actions = new HashMap<>();
+    private final Map<String, Callable> actions = new HashMap<>();
     private final Map<String, Function> functions = new HashMap<>();
 
     public void registerEntity(final String name, final EntityType entityType) {
@@ -30,7 +30,7 @@ public class EdmRepository {
         entitySets.put(name, entitySet);
     }
 
-    public void registerAction(String name, final String entitySetName, final Action action) {
+    public void registerAction(String name, final String entitySetName, final Callable action) {
 
         actions.put(name, action);
     }
@@ -52,7 +52,10 @@ public class EdmRepository {
 
     public List<String> getActionNames() {
         List<String> result = new ArrayList<>();
-        result.addAll(actions.values().stream().map(Action::getName).collect(Collectors.toList()));
+        result.addAll(actions.values()
+                .stream()
+                .map(Callable::getName)
+                .collect(Collectors.toList()));
         return result;
     }
 
@@ -73,7 +76,7 @@ public class EdmRepository {
         return Optional.ofNullable(entities.get(entityTypeName));
     }
 
-    public Optional<Action> findAction(String actionName) {
+    public Optional<Callable> findAction(String actionName) {
         return Optional.ofNullable(actions.get(actionName));
     }
 

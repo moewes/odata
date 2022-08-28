@@ -1,6 +1,6 @@
 package net.moewes.quarkus.odata.runtime;
 
-import net.moewes.quarkus.odata.repository.Action;
+import net.moewes.quarkus.odata.repository.Callable;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
@@ -147,7 +147,7 @@ public class QuarkusActionProcessor implements ActionPrimitiveProcessor,
 
     private Object processAction(ContentType importContentType, ActionRequestContext context)
             throws ODataApplicationException, DeserializerException {
-        Action action = repository.findAction(context.getActionName())
+        Callable action = repository.findAction(context.getActionName())
                 .orElseThrow(() -> new ODataApplicationException(
                         "Can't find action " + context.getActionName(),
                         HttpStatusCode.BAD_REQUEST.getStatusCode(),

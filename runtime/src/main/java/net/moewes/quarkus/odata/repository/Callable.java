@@ -9,10 +9,16 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Action {
+public class Callable {
 
     private String name;
     private String entitySet;
+    private String ClassName;
+    private String methodName;
     private List<Parameter> parameter;
     private Parameter returnType;
+
+    public String getMethodName() {
+        return methodName != null ? methodName : name;
+    }
 }

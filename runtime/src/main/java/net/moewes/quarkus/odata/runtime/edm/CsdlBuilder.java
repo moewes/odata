@@ -90,9 +90,9 @@ public class CsdlBuilder {
 
         CsdlAction csdlAction = null;
 
-        Optional<Action> actionOptional = edmRepository.findAction(actionName.getName());
+        Optional<Callable> actionOptional = edmRepository.findAction(actionName.getName());
         if (actionOptional.isPresent()) {
-            Action action = actionOptional.get();
+            Callable action = actionOptional.get();
 
             csdlAction = new CsdlAction()
                     .setName(action.getName());
