@@ -87,9 +87,9 @@ class ODataProcessor {
                            BuildProducer<EntitySetBuildItem> buildProducer) {
 
         IndexView indexView = beanArchiveIndex.getIndex();
-        Collection<AnnotationInstance> integrationCards = indexView.getAnnotations(ENTITY_SET);
+        Collection<AnnotationInstance> entitySets = indexView.getAnnotations(ENTITY_SET);
 
-        integrationCards.forEach(annotationInstance -> {
+        entitySets.forEach(annotationInstance -> {
             String name = annotationInstance.value().asString();
             String className = annotationInstance.target().asClass().name().toString();
             log.debug("EntitySet " + name + " ; " + className);
@@ -101,6 +101,7 @@ class ODataProcessor {
 
     @BuildStep
     void scanForNavigationBindings(BeanArchiveIndexBuildItem beanArchiveIndex,
+                                   List<EntityTypeBuildItem> entityTypeBuildItems,
                                    BuildProducer<NavigationBindingBuildItem> buildProducer) {
 
         IndexView indexView = beanArchiveIndex.getIndex();
@@ -112,38 +113,39 @@ class ODataProcessor {
             Callable callable = initCallableFromMethodInfo(annotationInstance, methodInfo);
 
             if (methodInfo.parameterTypes().size() != 1) {
-                // FIXME Throw Extension
-                throw new RuntimeException("xxyyzz");
+                throw new RuntimeException("Navigation binding method should have exactly one " +
+                        "parameter");
+            }
+            Type bindingType = methodInfo.parameterTypes().get(0);
+            Parameter bindingParameter =
+                    createParameterNew(entityTypeBuildItems, bindingType);
+
+            if (!bindingParameter.isBindingParameter()) {
+                throw new RuntimeException("Cannot find entity type " + bindingType);
             }
 
-
-            // log.info("NavigationBinding " + name + " " + declaringClass.simpleName() + " " +
-            // methodName);
-
-            String entitySet = "ES";
             List<Parameter> parameters = new ArrayList<>();
+            parameters.add(bindingParameter);
+            callable.setParameter(parameters);
+
+            Type returnType = methodInfo.returnType();
+            Parameter returnParameter =
+                    createParameterNew(entityTypeBuildItems, returnType);
+
+            if (!returnParameter.isBindingParameter()) {
+                throw new RuntimeException("Cannot find entity type " + returnType);
+            }
+            callable.setReturnType(returnParameter);
 
             buildProducer.produce(new NavigationBindingBuildItem(callable.getName(), callable));
         });
-    }
-
-    private Callable initCallableFromMethodInfo(AnnotationInstance annotationInstance,
-                                                MethodInfo methodInfo) {
-        String name = annotationInstance.value().asString();
-        String methodName = methodInfo.name();
-        ClassInfo declaringClass = methodInfo.declaringClass();
-        String className = declaringClass.simpleName();
-        Callable callable = new Callable();
-        callable.setName(name);
-        callable.setClassName(className);
-        callable.setMethodName(methodName);
-        return callable;
     }
 
     @BuildStep
     @Record(ExecutionTime.STATIC_INIT)
     void scanForServices(ODataServiceRecorder recorder, // TODO
                          List<EntityTypeBuildItem> entityTypeBuildItems,
+                         List<NavigationBindingBuildItem> navigationBindingBuildItems, // TODO
                          BeanArchiveIndexBuildItem beanArchiveIndex,
                          BeanContainerBuildItem beanContainer,
                          BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemProducer
@@ -214,20 +216,10 @@ class ODataProcessor {
 
                     Parameter returnParameter = createParameter(entityTypes, returnType);
 
-                    //Parameter returnParameter = new Parameter();
-                    //returnParameter.setTypeName(returnType.name().toString());
-                    //returnParameter.setTypeKind(getDataTypeKind(returnType.kind()));
-                    //Optional<EntityTypeBuildItem> optional =
-                    //        findEntityType(entityTypeBuildItems, returnType);
-                    //if (optional.isPresent()) {
-                    //    returnParameter.setBindingParameter(true); // TODO is that right
-                    //    returnParameter.setEntityType(optional.get().getName());
-                    //} else {
-                    //    returnParameter.setEdmType(getEdmType(returnType.name().toString()));
-                    //}
                     action.setReturnType(returnParameter);
                     recorder.registerAction(beanContainer.getValue(), actionName, name, action);
                 }
+                /*
                 if (methodInfo.hasAnnotation(NAVIGATION_BINDING)) {
                     String actionName = methodInfo.name();
                     if (actionName.startsWith("get")) {
@@ -240,8 +232,7 @@ class ODataProcessor {
                     action.setEntitySet(name);
                     List<Parameter> actionParameters = new ArrayList<>();
                     int i = 0;
-                    for (Type parameterType : methodInfo.parameterTypes()) { // FIXME es sollte nur
-                        // einen Parameter geben! und der sollte dem EntityType des Sets entsprechen
+                    for (Type parameterType : methodInfo.parameterTypes()) {
                         Parameter actionParameter = createParameter(entityTypes, parameterType);
                         actionParameter.setName(methodInfo.parameterName(i));
                         actionParameters.add(actionParameter);
@@ -253,8 +244,18 @@ class ODataProcessor {
                     Parameter returnParameter = createParameter(entityTypes, returnType);
                     action.setReturnType(returnParameter);
                     navigationBindings.add(action);
-                }
+                } */
             });
+            
+            navigationBindingBuildItems.stream()
+                    .filter(navigationBindingBuildItem -> navigationBindingBuildItem.callable.getParameter()
+                            .get(0)
+                            .getEntityType()
+                            .equals(service.value("entityType").asString()))
+                    .forEach(navigationBindingBuildItem -> {
+                        navigationBindingBuildItem.callable.setEntitySet(name);
+                        navigationBindings.add(navigationBindingBuildItem.callable);
+                    });
 
             buildProducer.produce(new EntitySetBuildItem(name,
                     service.value("entityType").asString(),
@@ -270,14 +271,26 @@ class ODataProcessor {
                           List<NavigationBindingBuildItem> navigationBindingBuildItems,
                           BeanContainerBuildItem beanContainer, ODataServiceRecorder recorder) {
 
-        entityTypeBuildItems.forEach(entityTypeBuildItem -> {
-            recorder.registerEntityType(beanContainer.getValue(),
-                    entityTypeBuildItem.getName(), entityTypeBuildItem.getEntityType());
-        });
-        entitySetBuildItems.forEach(entitySetBuildItem -> {
-            recorder.registerEntitySet(beanContainer.getValue(), entitySetBuildItem.getName(),
-                    entitySetBuildItem.getEntitySet());
-        });
+        entityTypeBuildItems.forEach(entityTypeBuildItem -> recorder.registerEntityType(
+                beanContainer.getValue(),
+                entityTypeBuildItem.getName(),
+                entityTypeBuildItem.getEntityType()));
+        entitySetBuildItems.forEach(entitySetBuildItem -> recorder.registerEntitySet(beanContainer.getValue(),
+                entitySetBuildItem.getName(),
+                entitySetBuildItem.getEntitySet()));
+    }
+
+    private Callable initCallableFromMethodInfo(AnnotationInstance annotationInstance,
+                                                MethodInfo methodInfo) {
+        String name = annotationInstance.value().asString();
+        String methodName = methodInfo.name();
+        ClassInfo declaringClass = methodInfo.declaringClass();
+        String className = declaringClass.simpleName();
+        Callable callable = new Callable();
+        callable.setName(name);
+        callable.setClassName(className);
+        callable.setMethodName(methodName);
+        return callable;
     }
 
     private Parameter createParameter(Map<String, String> entityTypes, Type parameterType) {
@@ -300,6 +313,39 @@ class ODataProcessor {
         if (entityTypes.containsKey(parameter.getTypeName())) {
             parameter.setBindingParameter(true);
             parameter.setEntityType(entityTypes.get(parameter.getTypeName()));
+        } else {
+            parameter.setEdmType(getEdmType(parameter.getTypeName()));
+        }
+        log.debug("Parameter " + parameter);
+        return parameter;
+    }
+
+    private Parameter createParameterNew(List<EntityTypeBuildItem> entityTypeBuildItems,
+                                         Type parameterType) {
+        log.debug(parameterType.toString());
+        Parameter parameter = new Parameter();
+
+        if ("java.util.List".equals(parameterType.name().toString()) && parameterType.kind()
+                .equals(Type.Kind.PARAMETERIZED_TYPE)) {
+            parameter.setCollection(true);
+            parameter.setTypeName(parameterType.asParameterizedType()
+                    .arguments()
+                    .get(0)
+                    .name()
+                    .toString());
+        } else {
+            parameter.setTypeName(parameterType.name().toString());
+        }
+        parameter.setTypeKind(getDataTypeKind(parameterType.kind()));
+
+        Optional<EntityTypeBuildItem> entityTypeOptional = entityTypeBuildItems.stream()
+                .filter(entityTypeBuildItem -> entityTypeBuildItem.entityType.getClassName()
+                        .equals(parameter.getTypeName()))
+                .findFirst();
+
+        if (entityTypeOptional.isPresent()) {
+            parameter.setBindingParameter(true);
+            parameter.setEntityType(entityTypeOptional.get().entityType.getName());
         } else {
             parameter.setEdmType(getEdmType(parameter.getTypeName()));
         }
