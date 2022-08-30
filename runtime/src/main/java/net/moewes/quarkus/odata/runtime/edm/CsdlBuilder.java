@@ -32,10 +32,18 @@ public class CsdlBuilder {
             CsdlNavigationPropertyBinding csdlNavigationPropertyBinding =
                     new CsdlNavigationPropertyBinding();
             csdlNavigationPropertyBinding.setPath(navigationBinding.getName());
+
+            edmRepository.findEntitySetForEntityTypeName(
+                    navigationBinding.getReturnType()
+                            .getEntityType()).ifPresent(target -> {
+                csdlNavigationPropertyBinding.setTarget(target.getName());
+                navigationPropertyBindings.add(csdlNavigationPropertyBinding);
+            });
+            /*
             csdlNavigationPropertyBinding.setTarget(edmRepository.findEntitySetForEntityTypeName(
                     navigationBinding.getReturnType()
                             .getEntityType()).orElse(new EntitySet()).getName());
-            navigationPropertyBindings.add(csdlNavigationPropertyBinding);
+            navigationPropertyBindings.add(csdlNavigationPropertyBinding);*/
         });
 
         return new CsdlEntitySet()

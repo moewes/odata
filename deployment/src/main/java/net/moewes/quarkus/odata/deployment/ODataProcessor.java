@@ -219,34 +219,8 @@ class ODataProcessor {
                     action.setReturnType(returnParameter);
                     recorder.registerAction(beanContainer.getValue(), actionName, name, action);
                 }
-                /*
-                if (methodInfo.hasAnnotation(NAVIGATION_BINDING)) {
-                    String actionName = methodInfo.name();
-                    if (actionName.startsWith("get")) {
-                        actionName = actionName.substring(3);
-                    }
-                    log.debug("found Navigation" + actionName);
-
-                    Callable action = new Callable();
-                    action.setName(actionName);
-                    action.setEntitySet(name);
-                    List<Parameter> actionParameters = new ArrayList<>();
-                    int i = 0;
-                    for (Type parameterType : methodInfo.parameterTypes()) {
-                        Parameter actionParameter = createParameter(entityTypes, parameterType);
-                        actionParameter.setName(methodInfo.parameterName(i));
-                        actionParameters.add(actionParameter);
-                        i++;
-                    }
-                    action.setParameter(actionParameters);
-
-                    Type returnType = methodInfo.returnType();
-                    Parameter returnParameter = createParameter(entityTypes, returnType);
-                    action.setReturnType(returnParameter);
-                    navigationBindings.add(action);
-                } */
             });
-            
+
             navigationBindingBuildItems.stream()
                     .filter(navigationBindingBuildItem -> navigationBindingBuildItem.callable.getParameter()
                             .get(0)
