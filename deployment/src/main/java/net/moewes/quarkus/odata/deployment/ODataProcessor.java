@@ -100,6 +100,49 @@ class ODataProcessor {
     }
 
     @BuildStep
+    void scanForActions(BeanArchiveIndexBuildItem beanArchiveIndex,
+                        List<EntityTypeBuildItem> entityTypeBuildItems,
+                        BuildProducer<ActionBuildItem> buildProducer) {
+
+        IndexView indexView = beanArchiveIndex.getIndex();
+        Collection<AnnotationInstance> actions =
+                indexView.getAnnotations(ACTION);
+
+        actions.forEach(annotationInstance -> {
+            MethodInfo methodInfo = annotationInstance.target().asMethod();
+            Callable callable = initCallableFromMethodInfo(annotationInstance, methodInfo);
+
+            List<Parameter> parameters = new ArrayList<>();
+            int i = 0;
+            for (Type bindingType : methodInfo.parameterTypes()) {
+                Parameter bindingParameter =
+                        createParameter(entityTypeBuildItems, bindingType);
+                bindingParameter.setName(methodInfo.parameterName(i));
+                parameters.add(bindingParameter);
+                i++;
+            }
+            callable.setParameter(parameters);
+
+            AnnotationInstance classAnnotation =
+                    methodInfo.declaringClass().classAnnotation(ENTITY_SET);
+            String entitySet =
+                    (classAnnotation.value() != null) ? classAnnotation.value().asString() :
+                            null;
+            callable.setEntitySet(entitySet);
+
+            Type returnType = methodInfo.returnType();
+            Parameter returnParameter =
+                    createParameter(entityTypeBuildItems, returnType);
+
+            callable.setReturnType(returnParameter);
+
+            buildProducer.produce(new ActionBuildItem(callable.getName(),
+                    entitySet,
+                    callable));
+        });
+    }
+
+    @BuildStep
     void scanForNavigationBindings(BeanArchiveIndexBuildItem beanArchiveIndex,
                                    List<EntityTypeBuildItem> entityTypeBuildItems,
                                    BuildProducer<NavigationBindingBuildItem> buildProducer) {
@@ -118,7 +161,7 @@ class ODataProcessor {
             }
             Type bindingType = methodInfo.parameterTypes().get(0);
             Parameter bindingParameter =
-                    createParameterNew(entityTypeBuildItems, bindingType);
+                    createParameter(entityTypeBuildItems, bindingType);
 
             if (!bindingParameter.isBindingParameter()) {
                 throw new RuntimeException("Cannot find entity type " + bindingType);
@@ -130,7 +173,7 @@ class ODataProcessor {
 
             Type returnType = methodInfo.returnType();
             Parameter returnParameter =
-                    createParameterNew(entityTypeBuildItems, returnType);
+                    createParameter(entityTypeBuildItems, returnType);
 
             if (!returnParameter.isBindingParameter()) {
                 throw new RuntimeException("Cannot find entity type " + returnType);
@@ -151,16 +194,7 @@ class ODataProcessor {
                          BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemProducer
             , BuildProducer<EntitySetBuildItem> buildProducer) {
 
-        Map<String, String> entityTypes = new HashMap<>();
-
         IndexView index = beanArchiveIndex.getIndex();
-
-        for (AnnotationInstance entityType : index.getAnnotations(ENTITY_TYPE)) {
-            log.debug("found EntityType " + entityType.target().toString());
-            String name = entityType.value().asString();
-
-            entityTypes.put(entityType.target().toString(), name);
-        }
 
         Collection<AnnotationInstance> services = index.getAnnotations(ENTITY_SET);
 
@@ -181,43 +215,6 @@ class ODataProcessor {
                             functionName,
                             name,
                             function);
-                }
-                if (methodInfo.hasAnnotation(ACTION)) {
-                    String actionName = methodInfo.name();
-                    log.debug("found action " + actionName);
-
-                    Callable action = new Callable();
-                    action.setName(actionName);
-                    action.setEntitySet(name);
-                    List<Parameter> actionParameters = new ArrayList<>();
-                    int i = 0;
-                    for (Type parameter : methodInfo.parameterTypes()) {
-                        log.debug(parameter.toString());
-                        Parameter actionParameter = new Parameter();
-
-                        actionParameter.setName(methodInfo.parameterName(i));
-                        actionParameter.setTypeKind(getDataTypeKind(parameter.kind()));
-                        actionParameter.setTypeName(parameter.name().toString());
-                        Optional<EntityTypeBuildItem> optional =
-                                findEntityType(entityTypeBuildItems, parameter);
-                        if (optional.isPresent()) {
-                            actionParameter.setBindingParameter(true);
-                            actionParameter.setEntityType(optional.get().getName());
-                        } else {
-                            actionParameter.setEdmType(getEdmType(parameter.name().toString()));
-                        }
-                        actionParameters.add(actionParameter);
-                        log.debug("Parameter " + actionParameter);
-                        i++;
-                    }
-                    action.setParameter(actionParameters);
-
-                    Type returnType = methodInfo.returnType();
-
-                    Parameter returnParameter = createParameter(entityTypes, returnType);
-
-                    action.setReturnType(returnParameter);
-                    recorder.registerAction(beanContainer.getValue(), actionName, name, action);
                 }
             });
 
@@ -243,6 +240,7 @@ class ODataProcessor {
     void registerElements(List<EntityTypeBuildItem> entityTypeBuildItems,
                           List<EntitySetBuildItem> entitySetBuildItems,
                           List<NavigationBindingBuildItem> navigationBindingBuildItems,
+                          List<ActionBuildItem> actionBuildItems,
                           BeanContainerBuildItem beanContainer, ODataServiceRecorder recorder) {
 
         entityTypeBuildItems.forEach(entityTypeBuildItem -> recorder.registerEntityType(
@@ -252,11 +250,17 @@ class ODataProcessor {
         entitySetBuildItems.forEach(entitySetBuildItem -> recorder.registerEntitySet(beanContainer.getValue(),
                 entitySetBuildItem.getName(),
                 entitySetBuildItem.getEntitySet()));
+        actionBuildItems.forEach(actionBuildItem -> recorder.registerAction(beanContainer.getValue(),
+                actionBuildItem.name,
+                actionBuildItem.entitySet,
+                actionBuildItem.callable));
     }
 
     private Callable initCallableFromMethodInfo(AnnotationInstance annotationInstance,
                                                 MethodInfo methodInfo) {
-        String name = annotationInstance.value().asString();
+
+        String name = (annotationInstance.value() != null) ?
+                annotationInstance.value().asString() : methodInfo.name();
         String methodName = methodInfo.name();
         ClassInfo declaringClass = methodInfo.declaringClass();
         String className = declaringClass.simpleName();
@@ -267,35 +271,8 @@ class ODataProcessor {
         return callable;
     }
 
-    private Parameter createParameter(Map<String, String> entityTypes, Type parameterType) {
-        log.debug(parameterType.toString());
-        Parameter parameter = new Parameter();
-
-        if ("java.util.List".equals(parameterType.name().toString()) && parameterType.kind()
-                .equals(Type.Kind.PARAMETERIZED_TYPE)) {
-            parameter.setCollection(true);
-            parameter.setTypeName(parameterType.asParameterizedType()
-                    .arguments()
-                    .get(0)
-                    .name()
-                    .toString());
-        } else {
-            parameter.setTypeName(parameterType.name().toString());
-        }
-        parameter.setTypeKind(getDataTypeKind(parameterType.kind()));
-
-        if (entityTypes.containsKey(parameter.getTypeName())) {
-            parameter.setBindingParameter(true);
-            parameter.setEntityType(entityTypes.get(parameter.getTypeName()));
-        } else {
-            parameter.setEdmType(getEdmType(parameter.getTypeName()));
-        }
-        log.debug("Parameter " + parameter);
-        return parameter;
-    }
-
-    private Parameter createParameterNew(List<EntityTypeBuildItem> entityTypeBuildItems,
-                                         Type parameterType) {
+    private Parameter createParameter(List<EntityTypeBuildItem> entityTypeBuildItems,
+                                      Type parameterType) {
         log.debug(parameterType.toString());
         Parameter parameter = new Parameter();
 

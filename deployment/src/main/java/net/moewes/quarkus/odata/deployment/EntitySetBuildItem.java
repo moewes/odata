@@ -7,7 +7,6 @@ public final class EntitySetBuildItem extends MultiBuildItem {
 
     final String name;
     final String className;
-
     final EntitySet entitySet;
 
     public EntitySetBuildItem(String name, String className, EntitySet entitySet) {
