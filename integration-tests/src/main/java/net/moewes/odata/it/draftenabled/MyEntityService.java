@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @ODataEntitySet(value = "MyService", entityType = "MyEntity")
 public class MyEntityService
@@ -63,12 +64,15 @@ public class MyEntityService
 
     @ODataNavigationBinding("SiblingEntity") // FIXM
     public MyEntity getSiblingEntity(MyEntity entity) {
-        return null;
+
+        entity.setId("S");
+        entity.setName("Active Sibling");
+        return entity;
     }
 
-    @ODataNavigationBinding("DraftAdministrativData") // FIXME
+    @ODataNavigationBinding("DraftAdministrativeData") // FIXME
     public DraftAdministrativeData getDraftAdministrativeData(MyEntity entity) {
-        return null;
+        return new DraftAdministrativeData();
     }
 
     //@ODataNavigationBinding("SecondEntity") // FIXME
@@ -84,5 +88,28 @@ public class MyEntityService
     @ODataFunction
     public String myFunction(MyEntity entity) {
         return "myFunction";
+    }
+
+    @ODataAction()
+    public MyEntity draftPrepare(MyEntity in, String sideEffectQualifier) {
+
+        Logger.getLogger("draftPrepare " + sideEffectQualifier);
+        return in;
+    }
+
+    @ODataAction
+    MyEntity draftActivate(MyEntity in) {
+        Logger.getLogger("draftActivate ");
+        in.setId("AC");
+        in.setName("Draft");
+        in.setHasActiveEntity(true);
+        in.setIsActiveEntity(false);
+        return in;
+    }
+
+    @ODataAction
+    MyEntity draftEdit(MyEntity in, boolean preserveChanges) {
+        Logger.getLogger("draftEdit " + preserveChanges);
+        return in;
     }
 }

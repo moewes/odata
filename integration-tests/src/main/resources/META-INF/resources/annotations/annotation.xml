@@ -64,9 +64,9 @@
             <Annotations Target="Quarkus.OData.Container/MyService">
                 <Annotation Term="Common.DraftRoot">
                     <Record Type="Common.DraftRootType">
-                        <PropertyValue Property="ActivationAction" String="OrdersService.draftActivate"/>
-                        <PropertyValue Property="EditAction" String="OrdersService.draftEdit"/>
-                        <PropertyValue Property="PreparationAction" String="OrdersService.draftPrepare"/>
+                        <PropertyValue Property="ActivationAction" String="Quarkus.OData.draftActivate"/>
+                        <PropertyValue Property="EditAction" String="Quarkus.OData.draftEdit"/>
+                        <PropertyValue Property="PreparationAction" String="Quarkus.OData.draftPrepare"/>
                     </Record>
                 </Annotation>
             </Annotations>

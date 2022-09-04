@@ -111,10 +111,11 @@ public class CsdlBuilder {
                 CsdlParameter csdlParameter = new CsdlParameter();
 
                 if (parameter.isBindingParameter()) {
-                    csdlParameter.setName(parameter.getEntityType());
+                    csdlParameter.setName(parameter.getName());
                     csdlParameter.setType(new FullQualifiedName(NAMESPACE,
                             parameter.getEntityType()));
                     finalCsdlAction.setBound(true);
+                    finalCsdlAction.setEntitySetPath(parameter.getName());
                 } else {
                     csdlParameter.setName(parameter.getName());
                     csdlParameter.setType(parameter.getEdmType().getFullQualifiedName());

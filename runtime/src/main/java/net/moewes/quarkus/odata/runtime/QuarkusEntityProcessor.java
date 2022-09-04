@@ -8,7 +8,6 @@ import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
-import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.*;
@@ -111,21 +110,16 @@ public class QuarkusEntityProcessor
                             }
                         });
                         Method declaredMethod =
-                                serviceBean.getClass().getDeclaredMethod("get" + action.getName(),
-                                        parameterClasses.toArray(Class[]::new)); // FIXME
+                                serviceBean.getClass().getDeclaredMethod(action.getMethodName(),
+                                        parameterClasses.toArray(Class[]::new));
 
                         List<Object> valueList = new ArrayList<>();
                         valueList.add(data);
 
                         Object result2 = declaredMethod.invoke(serviceBean, valueList.toArray());
 
-                        EntitySet effectiveEntitySet =
-                                repository.findEntitySet(edmEntitySet.getName())
-                                        .orElseThrow(() -> new ODataRuntimeException(
-                                                "Can't find Entityset"));
-
                         odataEntityConverter.convertDataToFrameworkEntity(result,
-                                repository.findEntityType(effectiveEntitySet.getEntityType())
+                                repository.findEntityType(action.getReturnType().getEntityType())
                                         .orElseThrow(),
                                 result2);
 

@@ -116,7 +116,11 @@ public class ODataRequestContext {
             EdmNavigationProperty navigationProperty = uriResourceNavigation.getProperty();
             EdmBindingTarget relatedBindingTarget = parentEntitySet
                     .getRelatedBindingTarget(navigationProperty.getName());
-            return (EdmEntitySet) relatedBindingTarget;
+            if (relatedBindingTarget != null) {
+                return (EdmEntitySet) relatedBindingTarget;
+            } else {
+                return parentEntitySet;
+            }
         } else {
             return null; // FIXME Throw Error?
         }
@@ -207,7 +211,7 @@ public class ODataRequestContext {
         response.setHeader(HttpHeader.CONTENT_TYPE, contentType.toContentTypeString());
     }
 
-    
+
     public UriResource getLastUriPart() {
         List<UriResource> resourcePaths = uriInfo.getUriResourceParts();
         return resourcePaths.get(resourcePaths.size() - 1);
