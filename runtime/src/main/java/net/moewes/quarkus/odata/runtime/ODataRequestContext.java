@@ -5,10 +5,7 @@ import org.apache.olingo.commons.api.data.ContextURL;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.data.Property;
-import org.apache.olingo.commons.api.edm.EdmBindingTarget;
-import org.apache.olingo.commons.api.edm.EdmEntitySet;
-import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
-import org.apache.olingo.commons.api.edm.EdmPrimitiveType;
+import org.apache.olingo.commons.api.edm.*;
 import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpHeader;
 import org.apache.olingo.commons.api.http.HttpMethod;
@@ -22,6 +19,7 @@ import org.apache.olingo.server.api.deserializer.DeserializerResult;
 import org.apache.olingo.server.api.deserializer.ODataDeserializer;
 import org.apache.olingo.server.api.serializer.*;
 import org.apache.olingo.server.api.uri.*;
+import org.apache.olingo.server.api.uri.queryoption.SelectOption;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -126,6 +124,19 @@ public class ODataRequestContext {
         }
     }
 
+    public EdmEntityType getEntityType() {
+
+        if (uriResource instanceof UriResourceEntitySet) {
+            return ((UriResourceEntitySet) uriResource).getEntitySet().getEntityType();
+        } else if (uriResource instanceof UriResourceNavigation) {
+            UriResourceNavigation uriResourceNavigation =
+                    (UriResourceNavigation) uriResource;
+            return uriResourceNavigation.getProperty().getType();
+        } else {
+            return null; // FIXME Throw Error?
+        }
+    }
+
     public Entity getEntityFromRequest(ContentType requestFormat)
             throws DeserializerException {
         InputStream inputStream = request.getBody();
@@ -144,12 +155,19 @@ public class ODataRequestContext {
                                   HttpStatusCode statusCode,
                                   ServiceMetadata serviceMetadata) throws SerializerException {
 
-        ContextURL contextURL = ContextURL.with().entitySet(getEntitySet()).build();
+        SelectOption selectOption = uriInfo.getSelectOption();
+
+        String selectList =
+                odata.createUriHelper().buildContextURLSelectList(getEntityType(),
+                        null, selectOption);
+
+        ContextURL contextURL =
+                ContextURL.with().entitySet(getEntitySet()).selectList(selectList).build();
         EntitySerializerOptions options =
-                EntitySerializerOptions.with().contextURL(contextURL).build();
+                EntitySerializerOptions.with().contextURL(contextURL).select(selectOption).build();
         ODataSerializer serializer = odata.createSerializer(contentType);
         SerializerResult serializerResult = serializer.entity(serviceMetadata,
-                getEntitySet().getEntityType(), entity, options);
+                getEntityType(), entity, options);
 
         response.setContent(serializerResult.getContent());
         response.setStatusCode(statusCode.getStatusCode());
