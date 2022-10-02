@@ -43,7 +43,7 @@ public class ServiceBean {
         return serviceBean;
     }
 
-    public Object getBoundEntityData(ActionRequestContext context,
+    public Object getBoundEntityData(ODataRequestContext context,
                                      ODataEntityConverter odataEntityConverter)
             throws ODataApplicationException {
 

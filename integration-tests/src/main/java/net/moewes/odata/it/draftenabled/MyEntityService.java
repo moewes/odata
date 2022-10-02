@@ -9,10 +9,7 @@ import net.moewes.quarkus.odata.annotations.ODataFunction;
 import net.moewes.quarkus.odata.annotations.ODataNavigationBinding;
 import org.apache.olingo.server.api.ODataApplicationException;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 
 @ODataEntitySet(value = "MyService", entityType = "MyEntity")
@@ -32,7 +29,7 @@ public class MyEntityService
         entity2.setId("E2");
         entity2.setName("Entity with id " + entity.getId());
         entity2.setIsActiveEntity(true);
-        entity2.setHasActiveEntity(true);
+        entity2.setHasActiveEntity(false);
         result.add(entity2);
         return result;
     }
@@ -43,13 +40,19 @@ public class MyEntityService
         MyEntity entity = new MyEntity();
         entity.setId(keys.get("Id"));
         entity.setName("Entity with id " + entity.getId());
+        entity.setIsActiveEntity(true);
 
         return Optional.of(entity);
     }
 
     @Override
     public MyEntity create(Object entity) throws ODataApplicationException {
-        return null;
+        MyEntity result = new MyEntity();
+        result.setId("N");
+        result.setName("New");
+        result.setHasActiveEntity(true);
+        result.setHasDraftEntity(true);
+        return result;
     }
 
     @Override
@@ -72,7 +75,14 @@ public class MyEntityService
 
     @ODataNavigationBinding("DraftAdministrativeData") // FIXME
     public DraftAdministrativeData getDraftAdministrativeData(MyEntity entity) {
-        return new DraftAdministrativeData();
+
+        DraftAdministrativeData draftAdministrativeData = new DraftAdministrativeData();
+        draftAdministrativeData.setDraftUUID(UUID.randomUUID());
+        draftAdministrativeData.setCreatedByUser("C-User");
+        draftAdministrativeData.setLastChangeByUser("l_user");
+        draftAdministrativeData.setInProcessByUser("P-User");
+        return draftAdministrativeData;
+        //return null;
     }
 
     //@ODataNavigationBinding("SecondEntity") // FIXME
@@ -93,23 +103,32 @@ public class MyEntityService
     @ODataAction()
     public MyEntity draftPrepare(MyEntity in, String sideEffectQualifier) {
 
-        Logger.getLogger("draftPrepare " + sideEffectQualifier);
+        Logger.getLogger("X").info("draftPrepare " + sideEffectQualifier);
+        //in.setId("AC");
+        in.setName("Draft prepare");
+        in.setHasActiveEntity(true);
+        in.setIsActiveEntity(false);
+
         return in;
     }
 
     @ODataAction
     MyEntity draftActivate(MyEntity in) {
-        Logger.getLogger("draftActivate ");
-        in.setId("AC");
-        in.setName("Draft");
-        in.setHasActiveEntity(true);
-        in.setIsActiveEntity(false);
+        Logger.getLogger("X").info("draftActivate ");
+        //in.setId("AC");
+        in.setName("Draft activted");
+        in.setHasActiveEntity(false);
+        in.setIsActiveEntity(true);
         return in;
     }
 
     @ODataAction
-    MyEntity draftEdit(MyEntity in, boolean preserveChanges) {
-        Logger.getLogger("draftEdit " + preserveChanges);
+    MyEntity draftEdit(MyEntity in) {//}, boolean PreserveChanges) {
+        Logger.getLogger("X").info("draftEdit ");
+        // in.setId("AC");
+        in.setName("Draft edit");
+        in.setHasActiveEntity(true);
+        in.setIsActiveEntity(false);
         return in;
     }
 }

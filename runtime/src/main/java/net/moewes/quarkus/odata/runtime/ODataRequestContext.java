@@ -19,9 +19,12 @@ import org.apache.olingo.server.api.deserializer.DeserializerResult;
 import org.apache.olingo.server.api.deserializer.ODataDeserializer;
 import org.apache.olingo.server.api.serializer.*;
 import org.apache.olingo.server.api.uri.*;
+import org.apache.olingo.server.api.uri.queryoption.ExpandItem;
+import org.apache.olingo.server.api.uri.queryoption.ExpandOption;
 import org.apache.olingo.server.api.uri.queryoption.SelectOption;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -156,15 +159,20 @@ public class ODataRequestContext {
                                   ServiceMetadata serviceMetadata) throws SerializerException {
 
         SelectOption selectOption = uriInfo.getSelectOption();
+        ExpandOption expandOption = uriInfo.getExpandOption();
 
         String selectList =
                 odata.createUriHelper().buildContextURLSelectList(getEntityType(),
-                        null, selectOption);
+                        expandOption, selectOption);
 
         ContextURL contextURL =
                 ContextURL.with().entitySet(getEntitySet()).selectList(selectList).build();
         EntitySerializerOptions options =
-                EntitySerializerOptions.with().contextURL(contextURL).select(selectOption).build();
+                EntitySerializerOptions.with()
+                        .contextURL(contextURL)
+                        .select(selectOption)
+                        .expand(expandOption)
+                        .build();
         ODataSerializer serializer = odata.createSerializer(contentType);
         SerializerResult serializerResult = serializer.entity(serviceMetadata,
                 getEntityType(), entity, options);
@@ -180,7 +188,11 @@ public class ODataRequestContext {
                                             ServiceMetadata serviceMetadata)
             throws SerializerException {
 
-        ContextURL contextURL = ContextURL.with().entitySet(getEntitySet()).build();
+        ContextURL contextURL =
+                ContextURL.with()
+                        .entitySet(getEntitySet())
+                        .serviceRoot(URI.create(request.getRawBaseUri() + "/"))
+                        .build();
         EntityCollectionSerializerOptions options =
                 EntityCollectionSerializerOptions.with().contextURL(contextURL).build();
         ODataSerializer serializer = odata.createSerializer(contentType);
@@ -246,5 +258,13 @@ public class ODataRequestContext {
         } else {
             return null;
         }
+    }
+
+    public boolean hasExpandedEntities() {
+        return uriInfo.getExpandOption() != null;
+    }
+
+    public List<ExpandItem> getExpandItems() {
+        return uriInfo.getExpandOption().getExpandItems();
     }
 }

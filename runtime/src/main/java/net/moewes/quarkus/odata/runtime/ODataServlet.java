@@ -34,6 +34,7 @@ public class ODataServlet extends HttpServlet {
         ServiceMetadata edm = odata.createServiceMetadata(new EdmProvider(repository, csdlBuilder),
                 new ArrayList<>());
         handler = odata.createHandler(edm);
+        // handler.register(new CustomDefaultProcessor());
         handler.register(new QuarkusEntityCollectionProcessor(repository));
         handler.register(new QuarkusEntityProcessor(repository));
         handler.register(new QuarkusPrimitiveProcessor(repository));

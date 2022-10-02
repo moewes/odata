@@ -6,6 +6,7 @@ import net.moewes.quarkus.odata.repository.Callable;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.Entity;
+import org.apache.olingo.commons.api.data.Link;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
 import org.apache.olingo.commons.api.format.ContentType;
@@ -15,10 +16,13 @@ import org.apache.olingo.server.api.deserializer.DeserializerException;
 import org.apache.olingo.server.api.serializer.SerializerException;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriParameter;
+import org.apache.olingo.server.api.uri.UriResource;
+import org.apache.olingo.server.api.uri.UriResourceNavigation;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class QuarkusEntityProcessor
         implements org.apache.olingo.server.api.processor.EntityProcessor {
@@ -60,79 +64,15 @@ public class QuarkusEntityProcessor
             entity = readNavigationData(parentEntitySet,
                     keyPredicates,
                     navigationProperty,
-                    entitySet);
+                    entitySet, context);
         } else {
             entitySet = context.getEntitySet();
             keyPredicates = context.getKeyPredicates();
-            entity = readData(entitySet, keyPredicates);
+            entity = readData(entitySet, keyPredicates, context);
         }
 
         context.respondWithEntity(entity, contentType, HttpStatusCode.OK, serviceMetadata);
     }
-
-    private Entity readNavigationData(EdmEntitySet parentEntitySet,
-                                      List<UriParameter> keyPredicates,
-                                      EdmNavigationProperty navigationProperty,
-                                      EdmEntitySet edmEntitySet) {
-
-        Entity result = new Entity();
-
-        repository.findEntitySet(parentEntitySet.getName()).ifPresent(entitySet -> {
-            Object serviceBean = repository.getServiceBean(entitySet);
-
-            if (serviceBean instanceof EntityCollectionProvider<?>) {
-
-                Map<String, String> keys = new HashMap<>();
-                odataEntityConverter.convertKeysToAppFormat(keyPredicates, entitySet, keys);
-                ((EntityCollectionProvider<?>) serviceBean).find(keys).ifPresent(data -> {
-                    try {
-                        String entityTypeName = navigationProperty.getType().getName();
-                        navigationProperty.getName();
-
-                        Callable action = entitySet.getNavigationBindings()
-                                .stream()
-                                .filter(action1 -> action1.getReturnType()
-                                        .getEntityType()
-                                        .equals(entityTypeName))
-                                .findFirst().orElseThrow(() -> new ODataApplicationException("Can" +
-                                        "'t find Navigation",
-                                        HttpStatusCode.BAD_REQUEST.getStatusCode(),
-                                        Locale.ENGLISH));
-
-                        List<Class<?>> parameterClasses = new ArrayList<>();
-                        action.getParameter().forEach(parameter -> {
-                            try {
-                                Class<?> aClass = Class.forName(parameter.getTypeName(), true,
-                                        Thread.currentThread().getContextClassLoader());
-                                parameterClasses.add(aClass);
-                            } catch (ClassNotFoundException e) {
-                                e.printStackTrace();
-                            }
-                        });
-                        Method declaredMethod =
-                                serviceBean.getClass().getDeclaredMethod(action.getMethodName(),
-                                        parameterClasses.toArray(Class[]::new));
-
-                        List<Object> valueList = new ArrayList<>();
-                        valueList.add(data);
-
-                        Object result2 = declaredMethod.invoke(serviceBean, valueList.toArray());
-
-                        odataEntityConverter.convertDataToFrameworkEntity(result,
-                                repository.findEntityType(action.getReturnType().getEntityType())
-                                        .orElseThrow(),
-                                result2);
-
-                    } catch (IllegalAccessException | InvocationTargetException |
-                             NoSuchMethodException | ODataApplicationException e) {
-                        e.printStackTrace(); // FIXME
-                    }
-                });
-            }
-        });
-        return result;
-    }
-
 
     @Override
     public void createEntity(ODataRequest oDataRequest, ODataResponse oDataResponse,
@@ -210,24 +150,111 @@ public class QuarkusEntityProcessor
         context.respondWithNoContent();
     }
 
-    private Entity readData(EdmEntitySet edmEntitySet, List<UriParameter> keyPredicates) {
+    private Entity readData(EdmEntitySet edmEntitySet, List<UriParameter> keyPredicates,
+                            ODataRequestContext context) {
 
         Entity entity = new Entity();
         repository.findEntitySet(edmEntitySet.getName()).ifPresent(entitySet -> {
 
-            Object serviceBean = repository.getServiceBean(entitySet);
-            if (serviceBean instanceof EntityCollectionProvider<?>) {
+            ServiceBean serviceBean = new ServiceBean(entitySet);
 
-                Map<String, String> keys = new HashMap<>();
-                odataEntityConverter.convertKeysToAppFormat(keyPredicates, entitySet, keys);
-                ((EntityCollectionProvider<?>) serviceBean).find(keys).ifPresent(data -> {
-                    odataEntityConverter.convertDataToFrameworkEntity(entity,
-                            repository.findEntityType(entitySet.getEntityType()).orElseThrow(),
-                            data);
-                });
+            Map<String, String> keys = new HashMap<>();
+            odataEntityConverter.convertKeysToAppFormat(keyPredicates, entitySet, keys);
+            try {
+                Object data =
+                        serviceBean.getBoundEntityData(context,
+                                odataEntityConverter);
+                odataEntityConverter.convertDataToFrameworkEntity(entity,
+                        repository.findEntityType(entitySet.getEntityType()).orElseThrow(),
+                        data);
+
+                if (context.hasExpandedEntities()) {
+
+                    context.getExpandItems().forEach(expandItem -> {
+                        UriResource
+                                uriResource =
+                                expandItem.getResourcePath().getUriResourceParts().get(0);
+                        if (uriResource instanceof UriResourceNavigation) {
+                            EdmNavigationProperty edmNavigationProperty =
+                                    ((UriResourceNavigation) uriResource).getProperty();
+
+                            Entity expandEntity = new Entity();
+
+                            String entityTypeName = edmNavigationProperty.getType().getName();
+
+                            Callable action = entitySet.getNavigationBindings()
+                                    .stream()
+                                    .filter(action1 -> action1.getReturnType()
+                                            .getEntityType()
+                                            .equals(entityTypeName))
+                                    .findFirst()
+                                    .orElseThrow();
+
+                            Object result2 = serviceBean.call(action, data, new HashMap<>());
+
+                            odataEntityConverter.convertDataToFrameworkEntity(expandEntity,
+                                    repository.findEntityType(action.getReturnType()
+                                                    .getEntityType())
+                                            .orElseThrow(),
+                                    result2);
+
+
+                            Link link = new Link();
+                            link.setTitle(edmNavigationProperty.getName());
+                            link.setInlineEntity(expandEntity);
+                            entity.getNavigationLinks().add(link);
+                        }
+                    });
+                }
+            } catch (ODataApplicationException e) {
+                throw new RuntimeException(e); // FIXME
             }
         });
         return entity;
+    }
+
+    private Entity readNavigationData(EdmEntitySet parentEntitySet,
+                                      List<UriParameter> keyPredicates,
+                                      EdmNavigationProperty navigationProperty,
+                                      EdmEntitySet edmEntitySet, ODataRequestContext context) {
+
+        Entity result = new Entity();
+
+        repository.findEntitySet(parentEntitySet.getName()).ifPresent(entitySet -> {
+            ServiceBean serviceBean = new ServiceBean(entitySet);
+
+            Map<String, String> keys = new HashMap<>();
+            odataEntityConverter.convertKeysToAppFormat(keyPredicates, entitySet, keys);
+            try {
+                Object data =
+                        serviceBean.getBoundEntityData(context.getParentContext(),
+                                odataEntityConverter);
+
+                String entityTypeName = navigationProperty.getType().getName();
+                //  navigationProperty.getName();
+
+                Callable action = entitySet.getNavigationBindings()
+                        .stream()
+                        .filter(action1 -> action1.getReturnType()
+                                .getEntityType()
+                                .equals(entityTypeName))
+                        .findFirst().orElseThrow(() -> new ODataApplicationException("Can" +
+                                "'t find Navigation",
+                                HttpStatusCode.BAD_REQUEST.getStatusCode(),
+                                Locale.ENGLISH));
+
+                Object result2 = serviceBean.call(action, data, new HashMap<>());
+
+                odataEntityConverter.convertDataToFrameworkEntity(result,
+                        repository.findEntityType(action.getReturnType().getEntityType())
+                                .orElseThrow(),
+                        result2);
+
+            } catch (ODataApplicationException e) {
+                e.printStackTrace(); // FIXME
+            }
+        });
+        return result;
     }
 
     private Entity createData(EntitySet entitySet, Entity entity) throws ODataApplicationException {
