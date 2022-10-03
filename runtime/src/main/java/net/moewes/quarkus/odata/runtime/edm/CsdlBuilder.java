@@ -39,11 +39,6 @@ public class CsdlBuilder {
                 csdlNavigationPropertyBinding.setTarget(target.getName());
                 navigationPropertyBindings.add(csdlNavigationPropertyBinding);
             });
-            /*
-            csdlNavigationPropertyBinding.setTarget(edmRepository.findEntitySetForEntityTypeName(
-                    navigationBinding.getReturnType()
-                            .getEntityType()).orElse(new EntitySet()).getName());
-            navigationPropertyBindings.add(csdlNavigationPropertyBinding);*/
         });
 
         return new CsdlEntitySet()

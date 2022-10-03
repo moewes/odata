@@ -71,12 +71,6 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
         }
         schema.setFunctions(functions);
 
-        /*
-        List<CsdlTerm> terms = new ArrayList<>();
-        terms.add(getTerm(new FullQualifiedName(NAMESPACE, "Term")));
-        schema.setTerms(terms);
-        */ // TODO
-
         schema.setEntityContainer(getEntityContainer());
 
         List<CsdlSchema> schemas = new ArrayList<>();
@@ -133,30 +127,4 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
 
         return term;
     }
-
-
-    /*
-        @Override
-        public CsdlComplexType getComplexType(FullQualifiedName complexTypeName) throws ODataException {
-
-            Logger.getLogger("type").info(complexTypeName.getFullQualifiedNameAsString());
-            CsdlComplexType type = new CsdlComplexType();
-            type.setName("InsertRestrictionsType");
-            CsdlProperty property = new CsdlProperty();
-            property.setName("Insertable")
-                    .setType(EdmPrimitiveTypeKind.Boolean.toString())
-                    .setDefaultValue("true");
-            type.setProperties(Arrays.asList(property));
-            return type;
-        }
-    */
-
-    /*@Override
-    public CsdlTypeDefinition getTypeDefinition(FullQualifiedName typeDefinitionName)
-            throws ODataException {
-        Logger.getLogger("typeDef").info(typeDefinitionName.getFullQualifiedNameAsString());
-        return super.getTypeDefinition(typeDefinitionName);
-    }
-
-     */
 }
