@@ -30,6 +30,7 @@ public class ODataServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
+
         OData odata = OData.newInstance();
         ServiceMetadata edm = odata.createServiceMetadata(new EdmProvider(repository, csdlBuilder),
                 new ArrayList<>());

@@ -7,6 +7,7 @@ import net.moewes.quarkus.odata.repository.DataTypes;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import org.apache.olingo.commons.api.data.Parameter;
 import org.apache.olingo.commons.api.ex.ODataRuntimeException;
+import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriParameter;
 
@@ -15,6 +16,8 @@ import javax.enterprise.inject.spi.CDI;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+
+import static net.moewes.quarkus.odata.runtime.DraftFilterExpressionVisitor.DraftRelatedMembers;
 
 public class ServiceBean {
 
@@ -144,6 +147,72 @@ public class ServiceBean {
             return declaredMethod.invoke(serviceBean, valueList.toArray());
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new ODataRuntimeException(e);
+        }
+    }
+
+    public Collection<?> getCollection(ODataRequestContext context)
+            throws ODataApplicationException {
+
+        Object preSelectionFilterEvaluation = context.preSelectionFilterEvaluation();
+
+        if (preSelectionFilterEvaluation instanceof DraftRelatedMembers) {
+
+            switch ((DraftRelatedMembers) preSelectionFilterEvaluation) {
+                case IsActiveEntity:
+                    return selectAll();
+
+                case HasDraftEntity:
+                    return selectAll();
+
+                case SiblingEntity_IsActiveEntity:
+                    return selectAll();
+
+                case DraftAdministrativeData_InProcessByUser:
+                    return selectAll();
+
+                case inactiveEntities:
+                    return selectAll();
+
+                case activeEntities:
+                    return selectAll();
+
+                case EntitiesWithNoDrafts:
+                    return selectAll();
+
+                case SiblingIsActiveEntityIsNull:
+                    return selectAll();
+
+                case SelectAll:
+                    return selectAll();
+
+                case SelectUnchanged:
+                    return selectAll();
+
+                case SelectEnqueued:
+                    return selectAll();
+
+                case ProcessedByOtherUser:
+                    return selectAll();
+
+                case SelectAllButDrafts:
+                    return selectAll();
+           
+                default:
+                    return selectAll();
+            }
+        } else {
+            return selectAll();
+        }
+    }
+
+    private Collection<?> selectAll() throws ODataApplicationException {
+
+        if (serviceBean instanceof EntityCollectionProvider<?>) {
+            return ((EntityCollectionProvider<?>) serviceBean).getCollection();
+        } else {
+            throw new ODataApplicationException("EntitySet not implement " +
+                    "EntitiCollectionProvider interface",
+                    HttpStatusCode.NOT_IMPLEMENTED.getStatusCode(), Locale.ENGLISH);
         }
     }
 }

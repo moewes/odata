@@ -3,6 +3,9 @@ package net.moewes.quarkus.odata.runtime.edm;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.apache.olingo.commons.api.edm.provider.*;
+import org.apache.olingo.commons.api.edm.provider.annotation.CsdlConstantExpression;
+import org.apache.olingo.commons.api.edm.provider.annotation.CsdlPropertyValue;
+import org.apache.olingo.commons.api.edm.provider.annotation.CsdlRecord;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -126,5 +129,31 @@ public class EdmProvider extends CsdlAbstractEdmProvider {
         term.setType("x.y.z");
 
         return term;
+    }
+
+    public CsdlAnnotations getAnnotationsGroup(FullQualifiedName targetName, String qualifier) {
+        // FIXME
+        CsdlAnnotations csdlAnnotations = new CsdlAnnotations();
+        csdlAnnotations.setTarget(targetName.getFullQualifiedNameAsString());
+
+        CsdlConstantExpression i =
+                new CsdlConstantExpression(CsdlConstantExpression.ConstantExpressionType.String);
+        i.setValue("Quarkus.OData.draftEdit");
+
+        CsdlPropertyValue value = new CsdlPropertyValue();
+        value.setValue(i);
+        value.setProperty("EditAction");
+
+        CsdlRecord r = new CsdlRecord();
+        r.setPropertyValues(Arrays.asList(value));
+
+        CsdlAnnotation a = new CsdlAnnotation();
+        a.setTerm("Common.DraftRoot");
+        a.setExpression(r);
+
+        csdlAnnotations.setAnnotations(Arrays.asList(a));
+
+
+        return csdlAnnotations;
     }
 }

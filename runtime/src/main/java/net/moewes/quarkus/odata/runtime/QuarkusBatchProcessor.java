@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 public class QuarkusBatchProcessor implements BatchProcessor {
 
@@ -21,7 +22,10 @@ public class QuarkusBatchProcessor implements BatchProcessor {
     private ServiceMetadata serviceMetadata;
 
     @Override
-    public void processBatch(BatchFacade batchFacade, ODataRequest oDataRequest, ODataResponse oDataResponse) throws ODataApplicationException, ODataLibraryException {
+    public void processBatch(BatchFacade batchFacade,
+                             ODataRequest oDataRequest,
+                             ODataResponse oDataResponse)
+            throws ODataApplicationException, ODataLibraryException {
 
         final String boundary = batchFacade
                 .extractBoundaryFromContentType(oDataRequest.getHeader(HttpHeader.CONTENT_TYPE));
@@ -34,19 +38,26 @@ public class QuarkusBatchProcessor implements BatchProcessor {
 
         final List<ODataResponsePart> responseParts = new ArrayList<>();
         for (final BatchRequestPart part : requestParts) {
+            Logger.getLogger("OData Batch")
+                    .info(part.getRequests().get(0).getMethod() + " " + part.getRequests()
+                            .get(0)
+                            .getRawRequestUri());
             responseParts.add(batchFacade.handleBatchRequest(part));
         }
 
         final String responseBoundary = "batch_" + UUID.randomUUID().toString();
-        final InputStream responseContent = odata.createFixedFormatSerializer().batchResponse(responseParts, responseBoundary);
+        final InputStream responseContent =
+                odata.createFixedFormatSerializer().batchResponse(responseParts, responseBoundary);
 
-        oDataResponse.setHeader(HttpHeader.CONTENT_TYPE, ContentType.MULTIPART_MIXED + ";boundary=" + responseBoundary);
+        oDataResponse.setHeader(HttpHeader.CONTENT_TYPE,
+                ContentType.MULTIPART_MIXED + ";boundary=" + responseBoundary);
         oDataResponse.setContent(responseContent);
         oDataResponse.setStatusCode(HttpStatusCode.ACCEPTED.getStatusCode());
     }
 
     @Override
-    public ODataResponsePart processChangeSet(BatchFacade batchFacade, List<ODataRequest> list) throws ODataApplicationException, ODataLibraryException {
+    public ODataResponsePart processChangeSet(BatchFacade batchFacade, List<ODataRequest> list)
+            throws ODataApplicationException, ODataLibraryException {
 
         final List<ODataResponse> responses = new ArrayList<>();
 

@@ -15,6 +15,9 @@ import org.apache.olingo.server.api.*;
 import org.apache.olingo.server.api.processor.EntityCollectionProcessor;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriParameter;
+import org.apache.olingo.server.api.uri.queryoption.FilterOption;
+import org.apache.olingo.server.api.uri.queryoption.expression.Expression;
+import org.apache.olingo.server.api.uri.queryoption.expression.ExpressionVisitException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -48,12 +51,25 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
         ODataRequestContext context = new ODataRequestContext(odata, oDataRequest,
                 oDataResponse, uriInfo);
 
+        // Refactor
+
+        FilterOption filterOption = uriInfo.getFilterOption();
+        if (filterOption != null) {
+            Expression filterExpression = filterOption.getExpression();
+
+            DraftFilterExpressionVisitor draftVisitor = new DraftFilterExpressionVisitor();
+            try {
+                Object accept = filterExpression.accept(draftVisitor);
+            } catch (ExpressionVisitException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        // Refactor end
+
         EntityCollection entityCollection;
-        EdmEntitySet edmEntitySet;
 
         if (context.isEntitySet()) {
-            edmEntitySet = context.getEntitySet();
-            entityCollection = getData(edmEntitySet);
+            entityCollection = getData(context);
         } else if (context.isNavigation()) {
             EdmNavigationProperty navigationProperty = context.getNavigationProperty();
 
@@ -68,33 +84,60 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                     Locale.ENGLISH);
         }
 
+        // Refactor begin
+        //FilterOption filterOption = uriInfo.getFilterOption();
+        /*
+        if (filterOption != null) {
+            Expression filterExpression = filterOption.getExpression();
+
+            Iterator<Entity> entityIterator = entityCollection.getEntities().iterator();
+
+            while (entityIterator.hasNext()) {
+                Entity entity = entityIterator.next();
+                FilterExpressionVisitor visitor = new FilterExpressionVisitor(entity);
+                Object visitorResult = null;
+                try {
+                    visitorResult = filterExpression.accept(visitor);
+                } catch (ExpressionVisitException e) {
+                    throw new RuntimeException(e);
+                }
+                if (visitorResult instanceof Boolean) {
+                    if (Boolean.FALSE.equals(visitorResult)) {
+                        entityIterator.remove();
+                    }
+                }
+            }
+        }
+
+         */
+        // Refactor end
         context.respondWithEntityCollection(entityCollection,
                 contentType,
                 HttpStatusCode.OK,
                 serviceMetadata);
     }
 
-    private EntityCollection getData(EdmEntitySet edmEntitySet) {
+    private EntityCollection getData(ODataRequestContext context) throws ODataApplicationException {
 
         EntityCollection collection = new EntityCollection();
 
-        repository.findEntitySet(edmEntitySet.getName()).ifPresent(entitySet -> {
-            Object serviceBean = repository.getServiceBean(entitySet);
-            if (serviceBean instanceof EntityCollectionProvider<?>) {
-                Object dataCollection = ((EntityCollectionProvider<?>) serviceBean).getCollection();
+        EntitySet entitySet =
+                repository.findEntitySet(context.getEntitySet().getName()).orElseThrow();
 
-                if (dataCollection instanceof Collection) {
-                    ((Collection<?>) dataCollection).forEach(data -> {
-                        Entity entity = new Entity();
-                        odataEntityConverter.convertDataToFrameworkEntity(entity,
-                                repository.findEntityType(entitySet.getEntityType()).orElseThrow(),
-                                data);
+        ServiceBean serviceBean1 = new ServiceBean(entitySet);
 
-                        collection.getEntities().add(entity);
-                    });
-                }
-            }
-        });
+        Collection<?> dataCollection = serviceBean1.getCollection(context);
+
+        if (dataCollection != null) {
+            dataCollection.forEach(data -> {
+                Entity entity = new Entity();
+                odataEntityConverter.convertDataToFrameworkEntity(entity,
+                        repository.findEntityType(entitySet.getEntityType()).orElseThrow(),
+                        data);
+
+                collection.getEntities().add(entity);
+            });
+        }
         return collection;
     }
 

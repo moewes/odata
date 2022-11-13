@@ -97,14 +97,10 @@ public class ODataEntityConverter {
         } catch (ClassNotFoundException e) {
             throw new ODataRuntimeException("Entity Class for " + entityType.getName() + " not " +
                     "found");
-        } catch (InvocationTargetException e) {
+        } catch (InvocationTargetException | IllegalAccessException | InstantiationException |
+                 NoSuchMethodException e) {
             e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
+            throw new ODataRuntimeException("Something went wrong :-(");
         }
 
         for (EntityProperty entityProperty : entityType.getPropertyMap().values()) {

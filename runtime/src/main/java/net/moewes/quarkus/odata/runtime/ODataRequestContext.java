@@ -10,18 +10,15 @@ import org.apache.olingo.commons.api.format.ContentType;
 import org.apache.olingo.commons.api.http.HttpHeader;
 import org.apache.olingo.commons.api.http.HttpMethod;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
-import org.apache.olingo.server.api.OData;
-import org.apache.olingo.server.api.ODataRequest;
-import org.apache.olingo.server.api.ODataResponse;
-import org.apache.olingo.server.api.ServiceMetadata;
+import org.apache.olingo.server.api.*;
 import org.apache.olingo.server.api.deserializer.DeserializerException;
 import org.apache.olingo.server.api.deserializer.DeserializerResult;
 import org.apache.olingo.server.api.deserializer.ODataDeserializer;
 import org.apache.olingo.server.api.serializer.*;
 import org.apache.olingo.server.api.uri.*;
-import org.apache.olingo.server.api.uri.queryoption.ExpandItem;
-import org.apache.olingo.server.api.uri.queryoption.ExpandOption;
-import org.apache.olingo.server.api.uri.queryoption.SelectOption;
+import org.apache.olingo.server.api.uri.queryoption.*;
+import org.apache.olingo.server.api.uri.queryoption.expression.Expression;
+import org.apache.olingo.server.api.uri.queryoption.expression.ExpressionVisitException;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -40,7 +37,7 @@ public class ODataRequestContext {
     @Getter
     private final ODataRequestContext parentContext;
 
-    protected UriResource uriResource;
+    protected final UriResource uriResource;
 
     public ODataRequestContext(OData odata, ODataRequest oDataRequest,
                                ODataResponse oDataResponse,
@@ -188,13 +185,21 @@ public class ODataRequestContext {
                                             ServiceMetadata serviceMetadata)
             throws SerializerException {
 
+        CountOption countOption = uriInfo.getCountOption();
+        if (countOption != null && countOption.getValue()) {
+            entityCollection.setCount(entityCollection.getEntities().size());
+        }
+
         ContextURL contextURL =
                 ContextURL.with()
                         .entitySet(getEntitySet())
                         .serviceRoot(URI.create(request.getRawBaseUri() + "/"))
                         .build();
         EntityCollectionSerializerOptions options =
-                EntityCollectionSerializerOptions.with().contextURL(contextURL).build();
+                EntityCollectionSerializerOptions.with()
+                        .contextURL(contextURL)
+                        .count(countOption)
+                        .build();
         ODataSerializer serializer = odata.createSerializer(contentType);
         SerializerResult serializerResult = serializer.entityCollection(serviceMetadata,
                 getEntitySet().getEntityType(), entityCollection, options);
@@ -266,5 +271,21 @@ public class ODataRequestContext {
 
     public List<ExpandItem> getExpandItems() {
         return uriInfo.getExpandOption().getExpandItems();
+    }
+
+    public Object preSelectionFilterEvaluation() throws ODataApplicationException {
+
+        FilterOption filterOption = uriInfo.getFilterOption();
+        if (filterOption != null) {
+            Expression filterExpression = filterOption.getExpression();
+
+            DraftFilterExpressionVisitor draftVisitor = new DraftFilterExpressionVisitor();
+            try {
+                return filterExpression.accept(draftVisitor);
+            } catch (ExpressionVisitException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return true;
     }
 }

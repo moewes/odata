@@ -49,6 +49,20 @@ public class IntegrationTest {
     }
 
     @Test
+    public void getAllBasicEntitiesWithCount() {
+        Response response = given()
+                .when()
+                .get("/odata/BasicSet?$count=true");
+
+        response
+                .then()
+                .statusCode(200);
+        
+        String asString = response.asString();
+        Assertions.assertEquals(true, asString.contains("@odata.count"));
+    }
+
+    @Test
     public void getBasicEntityDefaultValues() {
         Response response = given()
                 .when()
