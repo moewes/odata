@@ -192,17 +192,19 @@ public class QuarkusEntityProcessor
 
                             Object result2 = serviceBean.call(action, data, new HashMap<>());
 
-                            odataEntityConverter.convertDataToFrameworkEntity(expandEntity,
-                                    repository.findEntityType(action.getReturnType()
-                                                    .getEntityType())
-                                            .orElseThrow(),
-                                    result2);
+                            if (result2 != null) {
+                                odataEntityConverter.convertDataToFrameworkEntity(expandEntity,
+                                        repository.findEntityType(action.getReturnType()
+                                                        .getEntityType())
+                                                .orElseThrow(),
+                                        result2);
 
 
-                            Link link = new Link();
-                            link.setTitle(edmNavigationProperty.getName());
-                            link.setInlineEntity(expandEntity);
-                            entity.getNavigationLinks().add(link);
+                                Link link = new Link();
+                                link.setTitle(edmNavigationProperty.getName());
+                                link.setInlineEntity(expandEntity);
+                                entity.getNavigationLinks().add(link);
+                            }
                         }
                     });
                 }

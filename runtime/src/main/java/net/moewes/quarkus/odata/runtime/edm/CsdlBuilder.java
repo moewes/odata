@@ -116,7 +116,7 @@ public class CsdlBuilder {
                     csdlParameter.setType(parameter.getEdmType().getFullQualifiedName());
                 }
 
-                csdlParameter.setCollection(false);
+                csdlParameter.setCollection(parameter.isCollection());
                 parameters.add(csdlParameter);
             });
 

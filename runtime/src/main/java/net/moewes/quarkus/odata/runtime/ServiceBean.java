@@ -54,9 +54,16 @@ public class ServiceBean {
             List<UriParameter> keyPredicates = context.getKeyPredicates();
             Map<String, String> keys = new HashMap<>();
             odataEntityConverter.convertKeysToAppFormat(keyPredicates, entitySet, keys);
-            return ((EntityCollectionProvider<?>) serviceBean).find(keys)
-                    .orElseThrow(() -> new ODataApplicationException("could not find bound entity " +
-                            "data", 404, Locale.ENGLISH));
+            if (keys.size() > 0) {
+                return ((EntityCollectionProvider<?>) serviceBean).find(keys)
+                        .orElseThrow(() -> new ODataApplicationException(
+                                "could not find bound entity " +
+                                        "data",
+                                404,
+                                Locale.ENGLISH));
+            } else { // Bound to Collection
+                return new ArrayList<>();
+            }
         } else {
             return null; // FIXME better throw exception
         }
@@ -73,14 +80,18 @@ public class ServiceBean {
                 if (parameter.getTypeKind().equals(DataTypeKind.PRIMITIVE)) {
                     parameterClasses.add(DataTypes.getClassForEdmType(parameter.getEdmType()));
                 } else {
-                    try {
-                        Class<?> aClass =
-                                Class.forName(parameter.getTypeName(), true,
-                                        Thread.currentThread()
-                                                .getContextClassLoader());
-                        parameterClasses.add(aClass);
-                    } catch (ClassNotFoundException e) {
-                        throw new ODataRuntimeException(e);
+                    if (parameter.isCollection()) {
+                        parameterClasses.add(List.class);
+                    } else {
+                        try {
+                            Class<?> aClass =
+                                    Class.forName(parameter.getTypeName(), true,
+                                            Thread.currentThread()
+                                                    .getContextClassLoader());
+                            parameterClasses.add(aClass);
+                        } catch (ClassNotFoundException e) {
+                            throw new ODataRuntimeException(e);
+                        }
                     }
                 }
             });
@@ -196,7 +207,7 @@ public class ServiceBean {
 
                 case SelectAllButDrafts:
                     return selectAll();
-           
+
                 default:
                     return selectAll();
             }

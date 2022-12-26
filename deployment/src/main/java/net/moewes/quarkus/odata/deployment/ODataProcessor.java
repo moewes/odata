@@ -78,7 +78,7 @@ class ODataProcessor {
 
             buildProducer.produce(new EntityTypeBuildItem(name,
                     className,
-                    createEntityType(name, annotationInstance.target().asClass())));
+                    createEntityType(indexView, name, annotationInstance.target().asClass())));
         });
     }
 
@@ -126,7 +126,8 @@ class ODataProcessor {
             AnnotationInstance classAnnotation =
                     methodInfo.declaringClass().classAnnotation(ENTITY_SET);
             String entitySet =
-                    (classAnnotation.value() != null) ? classAnnotation.value().asString() :
+                    (classAnnotation != null && classAnnotation.value() != null) ?
+                            classAnnotation.value().asString() :
                             null;
             callable.setEntitySet(entitySet);
 
@@ -164,7 +165,7 @@ class ODataProcessor {
                     createParameter(entityTypeBuildItems, bindingType);
 
             if (!bindingParameter.isBindingParameter()) {
-                throw new RuntimeException("Cannot find entity type " + bindingType);
+                // throw new RuntimeException("Cannot find entity type " + bindingType); // FIXME
             }
 
             List<Parameter> parameters = new ArrayList<>();
@@ -176,7 +177,7 @@ class ODataProcessor {
                     createParameter(entityTypeBuildItems, returnType);
 
             if (!returnParameter.isBindingParameter()) {
-                throw new RuntimeException("Cannot find entity type " + returnType);
+                //  throw new RuntimeException("Cannot find entity type " + returnType); // FIXME
             }
             callable.setReturnType(returnParameter);
 
@@ -308,10 +309,20 @@ class ODataProcessor {
         return DataTypes.getEdmTypeForClassName(typeName);
     }
 
-    private EntityType createEntityType(String name, ClassInfo classInfo) {
+    private EntityType createEntityType(IndexView indexView, String name, ClassInfo classInfo) {
 
-        final List<MethodInfo> methods = classInfo.methods();
         final Map<String, EntityProperty> propertyMap = new HashMap<>();
+        final DotName javaLangObject = DotName.createSimple("java.lang.Object");
+
+        final List<MethodInfo> methods = new ArrayList<>(classInfo.methods());
+        final Map<DotName, List<AnnotationInstance>> annotationsMap =
+                new HashMap<>(classInfo.annotationsMap());
+
+        fillMethodsAndAnnotationsFromSuperClasses(indexView,
+                classInfo,
+                methods,
+                annotationsMap,
+                javaLangObject);
 
         String propertyName;
         EntityProperty property;
@@ -350,7 +361,7 @@ class ODataProcessor {
             propertyMap.put(propertyName, property);
         }
 
-        classInfo.annotationsMap().forEach((dotName, annotationInstances) -> {
+        annotationsMap.forEach((dotName, annotationInstances) -> {
             log.debug("Found " + dotName.toString());
             if (DotName.createSimple(EntityKey.class.getName()).equals(dotName)) {
                 annotationInstances.forEach(annotationInstance -> {
@@ -364,12 +375,26 @@ class ODataProcessor {
         return new EntityType(name, classInfo.name().toString(), propertyMap);
     }
 
-    private Optional<EntityTypeBuildItem> findEntityType(List<EntityTypeBuildItem> entityTypeBuildItems,
-                                                         Type parameter) {
-        return entityTypeBuildItems.stream()
-                .filter(entityTypeBuildItem -> entityTypeBuildItem.getClassName()
-                        .equals(parameter.name().toString()))
-                .findFirst();
+    private void fillMethodsAndAnnotationsFromSuperClasses(IndexView indexView,
+                                                           ClassInfo classInfo,
+                                                           List<MethodInfo> methods,
+                                                           Map<DotName, List<AnnotationInstance>> annotationsMap,
+                                                           DotName javaLangObject) {
+        Type type = classInfo.superClassType();
+
+        while (!javaLangObject.equals(type.name())) {
+            ClassInfo superClass = indexView.getClassByName(type.name());
+            methods.addAll(superClass.methods());
+            superClass.annotationsMap().forEach((dotName, annotationInstances) -> {
+                List<AnnotationInstance> instances = annotationsMap.get(dotName);
+                if (instances == null) {
+                    annotationsMap.put(dotName, annotationInstances);
+                } else {
+                    instances.addAll(annotationInstances);
+                }
+            });
+            type = superClass.superClassType();
+        }
     }
 
     private DataTypeKind getDataTypeKind(Type.Kind kind) {
