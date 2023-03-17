@@ -186,6 +186,8 @@ public class ODataRequestContext {
             throws SerializerException {
 
         CountOption countOption = uriInfo.getCountOption();
+        ExpandOption expandOption = uriInfo.getExpandOption();
+
         if (countOption != null && countOption.getValue()) {
             entityCollection.setCount(entityCollection.getEntities().size());
         }
@@ -199,6 +201,7 @@ public class ODataRequestContext {
                 EntityCollectionSerializerOptions.with()
                         .contextURL(contextURL)
                         .count(countOption)
+                        .expand(expandOption)
                         .build();
         ODataSerializer serializer = odata.createSerializer(contentType);
         SerializerResult serializerResult = serializer.entityCollection(serviceMetadata,

@@ -6,6 +6,7 @@ import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.runtime.edm.EdmRepository;
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
+import org.apache.olingo.commons.api.data.Link;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
 import org.apache.olingo.commons.api.edm.EdmNavigationProperty;
 import org.apache.olingo.commons.api.ex.ODataRuntimeException;
@@ -15,6 +16,8 @@ import org.apache.olingo.server.api.*;
 import org.apache.olingo.server.api.processor.EntityCollectionProcessor;
 import org.apache.olingo.server.api.uri.UriInfo;
 import org.apache.olingo.server.api.uri.UriParameter;
+import org.apache.olingo.server.api.uri.UriResource;
+import org.apache.olingo.server.api.uri.UriResourceNavigation;
 import org.apache.olingo.server.api.uri.queryoption.FilterOption;
 import org.apache.olingo.server.api.uri.queryoption.expression.Expression;
 import org.apache.olingo.server.api.uri.queryoption.expression.ExpressionVisitException;
@@ -134,6 +137,49 @@ public class QuarkusEntityCollectionProcessor implements EntityCollectionProcess
                 odataEntityConverter.convertDataToFrameworkEntity(entity,
                         repository.findEntityType(entitySet.getEntityType()).orElseThrow(),
                         data);
+
+                // Refactor
+                if (context.hasExpandedEntities()) {
+
+                    context.getExpandItems().forEach(expandItem -> {
+                        UriResource
+                                uriResource =
+                                expandItem.getResourcePath().getUriResourceParts().get(0);
+                        if (uriResource instanceof UriResourceNavigation) {
+                            EdmNavigationProperty edmNavigationProperty =
+                                    ((UriResourceNavigation) uriResource).getProperty();
+
+                            Entity expandEntity = new Entity();
+
+                            String entityTypeName = edmNavigationProperty.getType().getName();
+
+                            Callable action = entitySet.getNavigationBindings()
+                                    .stream()
+                                    .filter(action1 -> action1.getReturnType()
+                                            .getEntityType()
+                                            .equals(entityTypeName))
+                                    .findFirst()
+                                    .orElseThrow();
+
+                            Object result2 = serviceBean1.call(action, data, new HashMap<>());
+
+                            if (result2 != null) {
+                                odataEntityConverter.convertDataToFrameworkEntity(expandEntity,
+                                        repository.findEntityType(action.getReturnType()
+                                                        .getEntityType())
+                                                .orElseThrow(),
+                                        result2);
+
+
+                                Link link = new Link();
+                                link.setTitle(edmNavigationProperty.getName());
+                                link.setInlineEntity(expandEntity);
+                                entity.getNavigationLinks().add(link);
+                            }
+                        }
+                    });
+                }
+                // Refactor
 
                 collection.getEntities().add(entity);
             });

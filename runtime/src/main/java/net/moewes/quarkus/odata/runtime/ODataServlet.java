@@ -48,5 +48,6 @@ public class ODataServlet extends HttpServlet {
 
         Logger.getLogger("OData request").info(req.getMethod() + " " + req.getPathInfo());
         handler.process(req, resp);
+        Logger.getLogger("OData request").info("executed");
     }
 }
