@@ -1,9 +1,9 @@
 package net.moewes.odata.it.navigation;
 
+import jakarta.inject.Inject;
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.annotations.ODataEntitySet;
 
-import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;

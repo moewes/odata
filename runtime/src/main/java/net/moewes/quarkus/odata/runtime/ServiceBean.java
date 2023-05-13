@@ -1,5 +1,7 @@
 package net.moewes.quarkus.odata.runtime;
 
+import jakarta.enterprise.inject.Default;
+import jakarta.enterprise.inject.spi.CDI;
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.repository.Callable;
 import net.moewes.quarkus.odata.repository.DataTypeKind;
@@ -11,8 +13,6 @@ import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriParameter;
 
-import javax.enterprise.inject.Default;
-import javax.enterprise.inject.spi.CDI;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;

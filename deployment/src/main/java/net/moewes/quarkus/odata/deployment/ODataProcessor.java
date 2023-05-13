@@ -8,6 +8,7 @@ import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.undertow.deployment.ServletBuildItem;
+import jakarta.enterprise.context.ApplicationScoped;
 import net.moewes.quarkus.odata.annotations.*;
 import net.moewes.quarkus.odata.repository.*;
 import net.moewes.quarkus.odata.runtime.ODataServiceRecorder;
@@ -18,7 +19,6 @@ import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.jboss.jandex.*;
 import org.jboss.logging.Logger;
 
-import javax.enterprise.context.ApplicationScoped;
 import java.util.*;
 
 

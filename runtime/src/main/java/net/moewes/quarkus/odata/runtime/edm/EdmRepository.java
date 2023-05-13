@@ -1,14 +1,14 @@
 package net.moewes.quarkus.odata.runtime.edm;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Default;
+import jakarta.enterprise.inject.spi.CDI;
 import net.moewes.quarkus.odata.repository.Callable;
 import net.moewes.quarkus.odata.repository.EntitySet;
 import net.moewes.quarkus.odata.repository.EntityType;
 import net.moewes.quarkus.odata.repository.Function;
 import org.apache.olingo.commons.api.ex.ODataRuntimeException;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.inject.Default;
-import javax.enterprise.inject.spi.CDI;
 import java.util.*;
 import java.util.stream.Collectors;
 

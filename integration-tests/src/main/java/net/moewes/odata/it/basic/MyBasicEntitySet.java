@@ -1,12 +1,12 @@
 package net.moewes.odata.it.basic;
 
+import jakarta.annotation.PostConstruct;
 import net.moewes.quarkus.odata.EntityCollectionProvider;
 import net.moewes.quarkus.odata.EntityProvider;
 import net.moewes.quarkus.odata.annotations.ODataAction;
 import net.moewes.quarkus.odata.annotations.ODataEntitySet;
 import org.apache.olingo.server.api.ODataApplicationException;
 
-import javax.annotation.PostConstruct;
 import java.util.*;
 
 @ODataEntitySet(value = "BasicSet", entityType = "BasicEntity")

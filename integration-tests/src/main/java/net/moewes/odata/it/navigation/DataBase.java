@@ -1,7 +1,8 @@
 package net.moewes.odata.it.navigation;
 
-import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
+import jakarta.annotation.PostConstruct;
+import jakarta.enterprise.context.ApplicationScoped;
+
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
