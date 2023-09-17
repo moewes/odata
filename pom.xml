@@ -53,7 +53,7 @@
                 <version>1.20.0</version>
                 <configuration>
                     <pushRemote>true</pushRemote>
-                    <versionDigitToIncrement>1</versionDigitToIncrement>
+                    <versionDigitToIncrement>2</versionDigitToIncrement>
                     <gitFlowConfig>
                         <developmentBranch>master</developmentBranch>
                     </gitFlowConfig>
