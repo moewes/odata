@@ -13,7 +13,7 @@
 
     <properties>
         <odata.version>4.9.0</odata.version>
-        <lombok.version>1.18.28</lombok.version>
+        <lombok.version>1.18.30</lombok.version>
     </properties>
     <dependencies>
         <dependency>
