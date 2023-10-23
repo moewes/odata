@@ -12,7 +12,7 @@
     <name>Odata V4 - Runtime</name>
 
     <properties>
-        <odata.version>4.9.0</odata.version>
+        <odata.version>4.10.0</odata.version>
         <lombok.version>1.18.30</lombok.version>
     </properties>
     <dependencies>
