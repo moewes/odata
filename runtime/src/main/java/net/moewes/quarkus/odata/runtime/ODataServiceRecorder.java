@@ -14,12 +14,12 @@ public class ODataServiceRecorder {
     public void registerEntityType(BeanContainer beanContainer,
                                    String name,
                                    EntityType entityType) {
-        EdmRepository repository = beanContainer.instance(EdmRepository.class);
+        EdmRepository repository = beanContainer.beanInstance(EdmRepository.class);
         repository.registerEntity(name, entityType);
     }
 
     public void registerEntitySet(BeanContainer beanContainer, String name, EntitySet entitySet) {
-        EdmRepository repository = beanContainer.instance(EdmRepository.class);
+        EdmRepository repository = beanContainer.beanInstance(EdmRepository.class);
         repository.registerEntitySet(name, entitySet);
     }
 
@@ -27,7 +27,7 @@ public class ODataServiceRecorder {
                                String name,
                                String entitySet,
                                Callable action) {
-        EdmRepository repository = beanContainer.instance(EdmRepository.class);
+        EdmRepository repository = beanContainer.beanInstance(EdmRepository.class);
         repository.registerAction(name, entitySet, action);
     }
 
@@ -35,7 +35,7 @@ public class ODataServiceRecorder {
                                  String name,
                                  String entitySetName,
                                  Function function) {
-        EdmRepository repository = beanContainer.instance(EdmRepository.class);
+        EdmRepository repository = beanContainer.beanInstance(EdmRepository.class);
         repository.registerFunction(name, entitySetName, function);
     }
 }
