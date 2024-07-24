@@ -6,7 +6,7 @@
     <parent>
         <groupId>net.moewes</groupId>
         <artifactId>odata-parent</artifactId>
-        <version>0.2.4-SNAPSHOT</version>
+        <version>0.2.4</version>
     </parent>
     <artifactId>integration-tests</artifactId>
     <name>Quarkus Odata V4 - Integration Tests</name>
