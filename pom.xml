@@ -15,7 +15,7 @@
     </modules>
     <properties>
         <compiler-plugin.version>3.8.1</compiler-plugin.version>
-        <failsafe-plugin.version>3.2.2</failsafe-plugin.version>
+        <failsafe-plugin.version>3.2.5</failsafe-plugin.version>
         <maven.compiler.parameters>true</maven.compiler.parameters>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
@@ -23,7 +23,7 @@
         <project.reporting.outputEncoding>UTF-8
         </project.reporting.outputEncoding>
         <quarkus.version>3.6.1</quarkus.version>
-        <surefire-plugin.version>3.2.2</surefire-plugin.version>
+        <surefire-plugin.version>3.2.5</surefire-plugin.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -50,7 +50,7 @@
             <plugin>
                 <groupId>com.amashchenko.maven.plugin</groupId>
                 <artifactId>gitflow-maven-plugin</artifactId>
-                <version>1.20.0</version>
+                <version>1.21.0</version>
                 <configuration>
                     <pushRemote>true</pushRemote>
                     <versionDigitToIncrement>2</versionDigitToIncrement>
